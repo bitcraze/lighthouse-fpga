@@ -1,0 +1,14 @@
+set_io clk12 35
+set_io d[0] 26
+set_io e[0] 27
+set_io d[1] 31
+set_io e[1] 32
+
+set_io RGB0 39
+set_io RGB1 40
+set_io RGB2 41
+
+set_io si 17
+set_io so 14
+set_io sck 15
+set_io n_cs 16

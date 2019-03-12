@@ -1,0 +1,31 @@
+set_io clk12 35
+set_io d 38
+set_io e 37
+set_io d[0] 38
+set_io e[0] 37
+set_io d[1] 48
+set_io e[1] 47
+set_io d[2] 28
+set_io e[2] 27
+set_io d[3] 12
+set_io e[3] 11
+set_io d[4] 46
+set_io e[4] 45
+set_io d[5] 32
+set_io e[5] 31
+set_io d[6] 10
+set_io e[6]  9
+set_io d[7] 26
+set_io e[7] 25
+
+set_io leds[0] 39
+set_io leds[1] 40
+set_io leds[2] 41
+
+set_io si 17
+set_io so 14
+set_io sck 15
+set_io n_cs 16
+
+set_io uart_tx 18
+set_io uart_rx 19

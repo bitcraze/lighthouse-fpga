@@ -1,0 +1,158 @@
+[*]
+[*] GTKWave Analyzer v3.3.82 (w)1999-2017 BSI
+[*] Sun Mar 18 15:59:52 2018
+[*]
+[dumpfile] "/home/arnaud/dev/fpga/lighthouse/ts4231_tb.vcd"
+[dumpfile_mtime] "Sun Mar 18 15:51:16 2018"
+[dumpfile_size] 18263
+[savefile] "/home/arnaud/dev/fpga/lighthouse/ts4231_tb.gtkw"
+[timestart] 0
+[size] 1876 600
+[pos] -1 -1
+*-27.386574 200900000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] testbench.
+[sst_width] 223
+[signals_width] 296
+[sst_expanded] 1
+[sst_vpaned_height] 141
+@28
+testbench.uut.d
+testbench.uut.e
+@820
++{TS4231 state} testbench.uut.state_str[2040:0]
+@200
+-Simulated IR signals
+@28
+testbench.uut.ir_e
+testbench.uut.ir_d
+@200
+-IO drive
+@28
+testbench.uut.d_drive
+testbench.uut.d_pull
+testbench.uut.e_drive
+testbench.uut.e_pull
+@201
+-Testbench configuration state
+@c00022
+testbench.config_device.config_val[14:0]
+@28
+(0)testbench.config_device.config_val[14:0]
+(1)testbench.config_device.config_val[14:0]
+(2)testbench.config_device.config_val[14:0]
+(3)testbench.config_device.config_val[14:0]
+(4)testbench.config_device.config_val[14:0]
+(5)testbench.config_device.config_val[14:0]
+(6)testbench.config_device.config_val[14:0]
+(7)testbench.config_device.config_val[14:0]
+(8)testbench.config_device.config_val[14:0]
+(9)testbench.config_device.config_val[14:0]
+(10)testbench.config_device.config_val[14:0]
+(11)testbench.config_device.config_val[14:0]
+(12)testbench.config_device.config_val[14:0]
+(13)testbench.config_device.config_val[14:0]
+(14)testbench.config_device.config_val[14:0]
+@1401200
+-group_end
+@22
+testbench.config_device.readback_config[14:0]
+@28
+testbench.e_drive
+testbench.d_drive
+@200
+-UUT configuration state
+@c00420
+testbench.uut.config_state
+@28
+(0)testbench.uut.config_state
+(1)testbench.uut.config_state
+(2)testbench.uut.config_state
+(3)testbench.uut.config_state
+(4)testbench.uut.config_state
+(5)testbench.uut.config_state
+(6)testbench.uut.config_state
+(7)testbench.uut.config_state
+(8)testbench.uut.config_state
+(9)testbench.uut.config_state
+(10)testbench.uut.config_state
+(11)testbench.uut.config_state
+(12)testbench.uut.config_state
+(13)testbench.uut.config_state
+(14)testbench.uut.config_state
+(15)testbench.uut.config_state
+(16)testbench.uut.config_state
+(17)testbench.uut.config_state
+(18)testbench.uut.config_state
+(19)testbench.uut.config_state
+(20)testbench.uut.config_state
+(21)testbench.uut.config_state
+(22)testbench.uut.config_state
+(23)testbench.uut.config_state
+(24)testbench.uut.config_state
+(25)testbench.uut.config_state
+(26)testbench.uut.config_state
+(27)testbench.uut.config_state
+(28)testbench.uut.config_state
+(29)testbench.uut.config_state
+(30)testbench.uut.config_state
+(31)testbench.uut.config_state
+@1401200
+-group_end
+@c00420
+testbench.uut.config_bit
+@28
+(0)testbench.uut.config_bit
+(1)testbench.uut.config_bit
+(2)testbench.uut.config_bit
+(3)testbench.uut.config_bit
+(4)testbench.uut.config_bit
+(5)testbench.uut.config_bit
+(6)testbench.uut.config_bit
+(7)testbench.uut.config_bit
+(8)testbench.uut.config_bit
+(9)testbench.uut.config_bit
+(10)testbench.uut.config_bit
+(11)testbench.uut.config_bit
+(12)testbench.uut.config_bit
+(13)testbench.uut.config_bit
+(14)testbench.uut.config_bit
+(15)testbench.uut.config_bit
+(16)testbench.uut.config_bit
+(17)testbench.uut.config_bit
+(18)testbench.uut.config_bit
+(19)testbench.uut.config_bit
+(20)testbench.uut.config_bit
+(21)testbench.uut.config_bit
+(22)testbench.uut.config_bit
+(23)testbench.uut.config_bit
+(24)testbench.uut.config_bit
+(25)testbench.uut.config_bit
+(26)testbench.uut.config_bit
+(27)testbench.uut.config_bit
+(28)testbench.uut.config_bit
+(29)testbench.uut.config_bit
+(30)testbench.uut.config_bit
+(31)testbench.uut.config_bit
+@1401200
+-group_end
+@c00022
+testbench.uut.config_reg[13:0]
+@28
+(0)testbench.uut.config_reg[13:0]
+(1)testbench.uut.config_reg[13:0]
+(2)testbench.uut.config_reg[13:0]
+(3)testbench.uut.config_reg[13:0]
+(4)testbench.uut.config_reg[13:0]
+(5)testbench.uut.config_reg[13:0]
+(6)testbench.uut.config_reg[13:0]
+(7)testbench.uut.config_reg[13:0]
+(8)testbench.uut.config_reg[13:0]
+(9)testbench.uut.config_reg[13:0]
+(10)testbench.uut.config_reg[13:0]
+(11)testbench.uut.config_reg[13:0]
+(12)testbench.uut.config_reg[13:0]
+(13)testbench.uut.config_reg[13:0]
+@1401200
+-group_end
+[pattern_trace] 1
+[pattern_trace] 0

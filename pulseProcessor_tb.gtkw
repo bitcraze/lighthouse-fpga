@@ -1,0 +1,42 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Fri Apr 13 14:33:03 2018
+[*]
+[dumpfile] "/home/arnaud/dev/fpga/lighthouse-fpga/pulseProcessor_tb.vcd"
+[dumpfile_mtime] "Fri Apr 13 14:31:44 2018"
+[dumpfile_size] 8059422
+[savefile] "/home/arnaud/dev/fpga/lighthouse-fpga/pulseProcessor_tb.gtkw"
+[timestart] 0
+[size] 1859 1050
+[pos] -1 -1
+*-28.314737 140400000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] testbench.
+[sst_width] 346
+[signals_width] 335
+[sst_expanded] 1
+[sst_vpaned_height] 283
+@28
+testbench.clk
+@200
+-Lighthouse signals
+@28
+testbench.converter.ir_e
+testbench.converter.ir_d
+@200
+-TS4231 signals
+@28
+testbench.converter.e
+testbench.converter.d
+@820
++{TS4231 State} testbench.converter.state_str[2040:0]
+@200
+-PulseProcessor
+@28
+testbench.envelope_ready
+testbench.envelope_valid
+@22
+testbench.uut.timestamp[31:0]
+@23
+testbench.uut.length[15:0]
+[pattern_trace] 1
+[pattern_trace] 0

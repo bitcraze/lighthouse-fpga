@@ -1,0 +1,53 @@
+[*]
+[*] GTKWave Analyzer v3.3.93 (w)1999-2018 BSI
+[*] Fri Nov  9 20:14:28 2018
+[*]
+[dumpfile] "/home/arnaud/tmp/lighthouse-fpga/lighthouse_tb.vcd"
+[dumpfile_mtime] "Fri Nov  9 20:13:36 2018"
+[dumpfile_size] 4949408
+[savefile] "/home/arnaud/tmp/lighthouse-fpga/lighthouse_tb.gtkw"
+[timestart] 0
+[size] 1629 986
+[pos] -290 -180
+*-27.709345 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] testbench.
+[treeopen] testbench.uut.
+[sst_width] 321
+[signals_width] 298
+[sst_expanded] 1
+[sst_vpaned_height] 586
+@28
+testbench.clk
+testbench.uut.configure
+@200
+-Pulse processor output
+@28
+testbench.pulseGenerator.ir_d
+@29
+testbench.pulseGenerator.ir_e
+@200
+-SPI state
+@28
+testbench.n_cs
+testbench.sck
+testbench.si
+@22
+testbench.uut.fifo_usedSlots[7:0]
+testbench.uut.pulseFifo.free[7:0]
+testbench.uut.pulseFifo.used[7:0]
+@200
+-UART
+@22
+testbench.uut.uart_ctr[15:0]
+@28
+testbench.uut.uart_tx
+@22
+testbench.uut.uart_data[7:0]
+@24
+testbench.uut.byte_ctr[2:0]
+@28
+testbench.uut.data_in_buffer
+testbench.uut.uart_ready
+testbench.uut.uart_valid
+[pattern_trace] 1
+[pattern_trace] 0
