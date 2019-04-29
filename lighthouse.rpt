@@ -1,0 +1,89 @@
+
+icetime topological timing analysis report
+==========================================
+
+Info: max_span_hack is enabled: estimate is conservative.
+
+Report for critical path:
+-------------------------
+
+        lc40_15_8_0 (LogicCell40) [clk] -> lcout: 1.491 ns
+     1.491 ns net_57471 (fifo_usedSlots[1])
+        odrv_15_8_57471_61207 (Odrv4) I -> O: 0.649 ns
+        t2688 (Span4Mux_h4) I -> O: 0.543 ns
+        t2687 (LocalMux) I -> O: 1.099 ns
+        inmux_13_9_53817_53853 (InMux) I -> O: 0.662 ns
+        lc40_13_9_2 (LogicCell40) in3 -> lcout: 0.874 ns
+     5.318 ns net_49935 ($abc$16300$n947)
+        odrv_13_9_49935_53674 (Odrv4) I -> O: 0.649 ns
+        t2310 (Span4Mux_h4) I -> O: 0.543 ns
+        t2309 (Span4Mux_h4) I -> O: 0.543 ns
+        t2308 (LocalMux) I -> O: 1.099 ns
+        inmux_18_10_73085_73135 (InMux) I -> O: 0.662 ns
+        lc40_18_10_3 (LogicCell40) in3 -> lcout: 0.874 ns
+     9.689 ns net_69212 (pulseFifo.fifo.do_shift_out)
+        odrv_18_10_69212_73183 (Odrv4) I -> O: 0.649 ns
+        t3293 (Span4Mux_v4) I -> O: 0.649 ns
+        t3295 (Span4Mux_v4) I -> O: 0.649 ns
+        t3294 (LocalMux) I -> O: 1.099 ns
+        inmux_22_17_88650_88670 (InMux) I -> O: 0.662 ns
+        t750 (CascadeMux) I -> O: 0.000 ns
+        lc40_22_17_0 (LogicCell40) in2 -> carryout: 0.609 ns
+    14.007 ns net_88667 ($auto$alumacc.cc:474:replace_alu$1537.C[1])
+        lc40_22_17_1 (LogicCell40) carryin -> carryout: 0.278 ns
+    14.285 ns net_88673 ($auto$alumacc.cc:474:replace_alu$1537.C[2])
+        lc40_22_17_2 (LogicCell40) carryin -> carryout: 0.278 ns
+    14.563 ns net_88679 ($auto$alumacc.cc:474:replace_alu$1537.C[3])
+        lc40_22_17_3 (LogicCell40) carryin -> carryout: 0.278 ns
+    14.841 ns net_88685 ($auto$alumacc.cc:474:replace_alu$1537.C[4])
+        lc40_22_17_4 (LogicCell40) carryin -> carryout: 0.278 ns
+    15.119 ns net_88691 ($auto$alumacc.cc:474:replace_alu$1537.C[5])
+        lc40_22_17_5 (LogicCell40) carryin -> carryout: 0.278 ns
+    15.397 ns net_88697 ($auto$alumacc.cc:474:replace_alu$1537.C[6])
+        lc40_22_17_6 (LogicCell40) carryin -> carryout: 0.278 ns
+    15.676 ns net_88703 ($auto$alumacc.cc:474:replace_alu$1537.C[7])
+        inmux_22_17_88703_88713 (InMux) I -> O: 0.662 ns
+        lc40_22_17_7 (LogicCell40) in3 -> lcout: 0.874 ns
+    17.212 ns net_84770 ($techmap1571\pulseFifo.fifo.memory.2.0.0.A1ADDR_11[7])
+        odrv_22_17_84770_77512 (Odrv4) I -> O: 0.649 ns
+        t3816 (Span4Mux_v4) I -> O: 0.649 ns
+        t3815 (Span4Mux_v4) I -> O: 0.649 ns
+        t3814 (LocalMux) I -> O: 1.099 ns
+        inmux_19_13_77042_77083 (InMux) I -> O: 0.662 ns
+        t621 (CascadeMux) I -> O: 0.000 ns
+    20.920 ns net_77083_cascademuxed
+        ram_19_13 (SB_RAM40_4K) RADDR[7] [setup]: 0.384 ns
+    21.305 ns net_73415 (pulseFifo.fifo.memory_out[41])
+
+Resolvable net names on path:
+     1.491 ns ..  4.444 ns fifo_usedSlots[1]
+     5.318 ns ..  8.815 ns $abc$16300$n947
+     9.689 ns .. 13.398 ns pulseFifo.fifo.do_shift_out
+    14.007 ns .. 14.007 ns $auto$alumacc.cc:474:replace_alu$1537.C[1]
+    14.285 ns .. 14.285 ns $auto$alumacc.cc:474:replace_alu$1537.C[2]
+    14.563 ns .. 14.563 ns $auto$alumacc.cc:474:replace_alu$1537.C[3]
+    14.841 ns .. 14.841 ns $auto$alumacc.cc:474:replace_alu$1537.C[4]
+    15.119 ns .. 15.119 ns $auto$alumacc.cc:474:replace_alu$1537.C[5]
+    15.397 ns .. 15.397 ns $auto$alumacc.cc:474:replace_alu$1537.C[6]
+    15.676 ns .. 16.338 ns $auto$alumacc.cc:474:replace_alu$1537.C[7]
+    17.212 ns .. 20.920 ns $techmap1571\pulseFifo.fifo.memory.2.0.0.A1ADDR_11[7]
+               RDATA[0] -> pulseFifo.fifo.memory_out[32]
+              RDATA[10] -> pulseFifo.fifo.memory_out[42]
+              RDATA[11] -> pulseFifo.fifo.memory_out[43]
+              RDATA[12] -> pulseFifo.fifo.memory_out[44]
+              RDATA[13] -> pulseFifo.fifo.memory_out[45]
+              RDATA[14] -> pulseFifo.fifo.memory_out[46]
+              RDATA[15] -> pulseFifo.fifo.memory_out[47]
+               RDATA[1] -> pulseFifo.fifo.memory_out[33]
+               RDATA[2] -> pulseFifo.fifo.memory_out[34]
+               RDATA[3] -> pulseFifo.fifo.memory_out[35]
+               RDATA[4] -> pulseFifo.fifo.memory_out[36]
+               RDATA[5] -> pulseFifo.fifo.memory_out[37]
+               RDATA[6] -> pulseFifo.fifo.memory_out[38]
+               RDATA[7] -> pulseFifo.fifo.memory_out[39]
+               RDATA[8] -> pulseFifo.fifo.memory_out[40]
+               RDATA[9] -> pulseFifo.fifo.memory_out[41]
+
+Total number of logic levels: 11
+Total path delay: 21.30 ns (46.94 MHz)
+

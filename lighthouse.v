@@ -107,35 +107,24 @@ module top #(
 
 
   /////////////////////////////////////////////
-  // LED Debugging
+  // LEDs
   /////////////////////////////////////////////
-  assign leds = FORCE_LED?3'b000:3'b111;
-
-  // // Debug LEDs
-  // reg led_r = 0, led_g = 0, led_b = 0;
-  // SB_RGBA_DRV #(
-  //   .CURRENT_MODE("0b1"),
-  //   .RGB0_CURRENT("0b000001"),
-  //   .RGB1_CURRENT("0b000001"),
-  //   .RGB2_CURRENT("0b000001")
-  // ) RGBA_DRIVER (
-  //   .CURREN(1'b1),
-  //   .RGBLEDEN(1'b1),
-  //   .RGB0PWM(led_r),
-  //   .RGB1PWM(led_y),
-  //   .RGB2PWM(led_g),
-  //   .RGB0(leds[0]),
-  //   .RGB1(leds[1]),
-  //   .RGB2(leds[2])
-  // );
-
-  // always @(posedge clk) begin
-  //   led_g <= fifo_usedSlots != 0;
-
-  //   led_y <= ~n_cs;
-
-  //   if (spi_start) led_r <= ~led_r;
-  // end
+  reg led_r = FORCE_LED, led_y = FORCE_LED, led_g = FORCE_LED;
+  SB_RGBA_DRV #(
+    .CURRENT_MODE("0b1"),
+    .RGB0_CURRENT("0b000001"),
+    .RGB1_CURRENT("0b000001"),
+    .RGB2_CURRENT("0b000001")
+  ) RGBA_DRIVER (
+    .CURREN(1'b1),
+    .RGBLEDEN(1'b1),
+    .RGB0PWM(led_r),
+    .RGB1PWM(led_y),
+    .RGB2PWM(led_g),
+    .RGB0(leds[0]),
+    .RGB1(leds[1]),
+    .RGB2(leds[2])
+  );
 
   /////////////////////////////////////////////
   // UART State machine

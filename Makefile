@@ -8,16 +8,17 @@ PACKAGE = sg48
 
 N_SENSORS ?= 4
 UART_BAUDRATE ?= 230400
-# Warning: only force LEDs with the rev.D
 FORCE_LED ?= 0
+
+TARGET_CLOCK_MHZ ?= 24
 
 all: $(PROJ).rpt $(PROJ).bin
 
-%.blif: %.v
-	yosys -p 'read_verilog $<; chparam -set N_SENSORS $(N_SENSORS) top; chparam -set UART_BAUDRATE $(UART_BAUDRATE) top; chparam -set FORCE_LED $(FORCE_LED) top; synth_ice40 -top top -blif $@' 
+%.json: %.v
+	yosys -p 'read_verilog $<; chparam -set N_SENSORS $(N_SENSORS) top; chparam -set UART_BAUDRATE $(UART_BAUDRATE) top; chparam -set FORCE_LED $(FORCE_LED) top; synth_ice40 -top top; write_json $@'
 
-%.asc: $(PIN_DEF) %.blif
-	arachne-pnr -s 1 -d $(subst up,,$(subst hx,,$(subst lp,,$(DEVICE)))) -o $@ -p $^ -P $(PACKAGE)
+%.asc: %.json $(PIN_DEF)
+	nextpnr-ice40 -r --up5k --json $< --asc $@ --pcf $(PIN_DEF) --freq $(TARGET_CLOCK_MHZ)
 	python3 tools/update_bitstream_comment.py $@ $(VERSION)
 
 %.bin: %.asc
@@ -48,7 +49,7 @@ run: $(PROJ).bin
 	iceprog -S $<
 
 clean:
-	rm -f $(PROJ).blif $(PROJ).asc $(PROJ).rpt $(PROJ).bin
+	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin
 
 .SECONDARY:
 .PHONY: all prog clean
