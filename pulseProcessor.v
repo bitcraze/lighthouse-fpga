@@ -106,6 +106,7 @@ module pulseProcessor #(
   reg [5:0] config_bit_counter = 0;
   reg [15:0] config_value = {14'h392b, 1'b0};
   reg config_bit = 0;
+  reg [4:0] config_wait_counter = 0;
   always @(posedge clk) begin
     if (config_enable) begin
       prev_reconfigure <= reconfigure;
@@ -114,7 +115,10 @@ module pulseProcessor #(
       case (config_state)
         CONFIG_IDLE: if (prev_reconfigure == 0 && reconfigure == 1) config_state <= CONFIG_WAIT_PULSE;
         CONFIG_WAIT_PULSE: if (config_prev_d == 1 && d_in == 0) config_state <= CONFIG_START_CFG;
-        CONFIG_START_CFG: config_state <= CONFIG_WRITE_START;
+        CONFIG_START_CFG: begin
+          if (config_wait_counter == 4) config_state <= CONFIG_WRITE_START;
+          config_wait_counter = config_wait_counter + 1;
+        end
         CONFIG_WRITE_START: begin
           config_bit_counter <= 0;
           config_state <= CONFIG_WRITE_E_LOW;
@@ -146,8 +150,8 @@ module pulseProcessor #(
     (* parallel_case *)
     case (config_state)
       CONFIG_START_CFG: begin
-        e_out = 1;
-        e_oe  = 1;
+        e_out = (config_wait_counter == 4);
+        e_oe  = (config_wait_counter == 4);
         d_out = 0;
         d_oe  = 0;
       end
