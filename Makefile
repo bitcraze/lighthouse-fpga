@@ -19,7 +19,7 @@ all: $(PROJ).rpt $(PROJ).bin
 
 %.asc: %.json $(PIN_DEF)
 	nextpnr-ice40 -r --up5k --json $< --asc $@ --pcf $(PIN_DEF) --freq $(TARGET_CLOCK_MHZ)
-	python3 tools/update_bitstream_comment.py $@ $(VERSION)
+	python3 tools/update_bitstream_comment.py $@ "$(VERSION)"
 
 %.bin: %.asc
 	icepack $< $@
