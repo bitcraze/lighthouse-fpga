@@ -1,4 +1,4 @@
-# Lighthouse receiver
+# Lighthouse receiver [![Build Status](https://travis-ci.org/bitcraze/lighthouse-fpga.svg)](https://travis-ci.org/bitcraze/lighthouse-fpga)
 
 This project contains a FPGA implementation for the [Bicraze Lighthouse deck](https://www.bitcraze.io/lighthouse-positioning-deck/) FPGA.
 It is using the TS4231 light to digital converter and targets a Lattice ice40up5k FPGA.
