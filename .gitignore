@@ -1,0 +1,14 @@
+.bloop/
+.metals/
+target/
+project/
+simWorkspace/
+blackboxes.v
+lighthouse.asc
+lighthouse.bin
+lighthouse.json
+LighthouseTopLevel_tb
+LighthouseTopLevel_tb.vcd
+LighthouseTopLevel.v
+verbose.log
+tmp/

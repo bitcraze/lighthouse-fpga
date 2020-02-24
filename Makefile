@@ -1,8 +1,8 @@
 PROJ = lighthouse
 
-VERSION ?= ""
+VERSION ?=
 
-PIN_DEF = lighthouse8_revB.pcf
+PIN_DEF = lighthouse4_revB.pcf
 DEVICE = up5k
 PACKAGE = sg48
 
@@ -12,14 +12,19 @@ FORCE_LED ?= 0
 
 TARGET_CLOCK_MHZ ?= 24
 
-all: $(PROJ).rpt $(PROJ).bin
+all: $(PROJ).bin
 
-%.json: %.v
-	yosys -p 'read_verilog $<; chparam -set N_SENSORS $(N_SENSORS) top; chparam -set UART_BAUDRATE $(UART_BAUDRATE) top; chparam -set FORCE_LED $(FORCE_LED) top; synth_ice40 -top top; write_json $@'
+generate_verilog:
+	sbt "runMain lighthouse.GenerateTopLevel"
+
+LighthouseTopLevel.v: generate_verilog
+
+$(PROJ).json: LighthouseTopLevel.v
+	yosys -p 'read_verilog LighthouseTopLevel.v; read_verilog  blackboxes.v; synth_ice40 -top LighthouseTopLevel; write_json $@'
 
 %.asc: %.json $(PIN_DEF)
-	nextpnr-ice40 -r --up5k --json $< --asc $@ --pcf $(PIN_DEF) --freq $(TARGET_CLOCK_MHZ)
-	python3 tools/update_bitstream_comment.py $@ "$(VERSION)"
+	nextpnr-ice40 --seed 2 --up5k --json $< --asc $@ --pcf $(PIN_DEF)
+	# python3 tools/update_bitstream_comment.py $@ "$(VERSION)"
 
 %.bin: %.asc
 	icepack $< $@
@@ -49,7 +54,7 @@ run: $(PROJ).bin
 	iceprog -S $<
 
 clean:
-	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin
+	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin $(PROJ)_timing.v *.vcd
 
 .SECONDARY:
 .PHONY: all prog clean

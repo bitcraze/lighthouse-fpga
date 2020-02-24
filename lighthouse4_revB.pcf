@@ -1,0 +1,41 @@
+set_io io_clk12MHz 35
+set_io io_d 12
+set_io io_e 11
+set_io io_d_0 38
+set_io io_e_0 37
+set_io io_d_1 48
+set_io io_e_1 47
+set_io io_d_2 28
+set_io io_e_2 27
+set_io io_d_3 12
+set_io io_e_3 11
+
+set_io io_led0 39
+set_io io_led1 40
+set_io io_led2 41
+
+set_io si 17
+set_io so 14
+set_io sck 15
+set_io n_cs 16
+
+set_io io_uart_txd 18
+# set_io io_uart_txd 43
+set_io io_uart_rxd 19
+
+# I2C to Crazyflie
+# set_io i2c_sda 20
+# set_io i2c_scl 13
+
+set_io io_debug0 20
+set_io io_debug1 44
+set_io debug_clk 43
+
+# UART to pin header
+# set_io uart1_rx 44
+# set_io uart1_tx 43
+
+
+# Clocks
+set_frequency Core_clk 48
+set_frequency Slow_clk 24
