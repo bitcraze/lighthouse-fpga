@@ -100,3 +100,9 @@ object constants {
                   0x00013C97, 0x000130CB,
                   0x00013750, 0x0001CB8D)
 }
+
+case class SB_WARMBOOT() extends BlackBox {
+    val BOOT = in Bool
+    val S1 = in Bool
+    val S0 = in Bool
+}

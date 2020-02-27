@@ -13,6 +13,7 @@ import _root_.lighthouse.lighthouse.Ddr
 import _root_.lighthouse.lighthouse.ShiftBuffer
 import java.io.File
 import scala.collection.mutable
+import _root_.lighthouse.lighthouse.SB_WARMBOOT
 
 class LighthouseTopLevel(nSensors: Int = 4,
                          frequency: HertzNumber = 48 MHz,
@@ -29,6 +30,8 @@ class LighthouseTopLevel(nSensors: Int = 4,
 
     val uart = master(Uart())
 
+    val led0 = out Bool
+    val led1 = out Bool
     val led2 = out Bool
   }
 
@@ -221,16 +224,39 @@ class LighthouseTopLevel(nSensors: Int = 4,
     uartCtrl.io.uart <> io.uart
     StreamWidthAdapter(syncBeamStream.queue(128), uartCtrl.io.write, endianness=LITTLE)
 
-    // LED Blinker
-    val timeout = Timeout(2 Hz)
+    // UART command handler
+    val commandHandler = new CommandHandler
+    commandHandler.io.input << uartCtrl.io.read
 
-    val led0 = Reg(Bool) init False
-    io.led2 := !led0
+    // LED Control
+    val ledControl = commandHandler.io.ledCommand.toReg()
 
-    when(timeout) {
-      timeout.clear()
-      led0 := !led0
+    val slowBlink = RegInit(False)
+    val slowBlinkTimer = Timeout(2 Hz)
+    when(slowBlinkTimer) {
+      slowBlinkTimer.clear()
+      slowBlink := !slowBlink
     }
+    val fastBlink = RegInit(False)
+    val fastBlinkTimer = Timeout(8 Hz)
+    when(fastBlinkTimer) {
+      fastBlinkTimer.clear()
+      fastBlink := !fastBlink
+    }
+
+    val ledMux = Seq((0, False), (1, slowBlink), (2, fastBlink), (3, True))
+
+    io.led0 := !ledControl(0 to 1).muxListDc(ledMux)
+    io.led1 := !ledControl(2 to 3).muxListDc(ledMux)
+    io.led2 := !ledControl(4 to 5).muxListDc(ledMux)
+
+    // Reset control
+    val resetControl = commandHandler.io.resetCommand.toReg()
+
+    val warmBoot = SB_WARMBOOT()
+    warmBoot.S0 := False
+    warmBoot.S1 := False
+    warmBoot.BOOT := resetControl === 0xCF
   }
 }
 

@@ -23,7 +23,7 @@ $(PROJ).json: LighthouseTopLevel.v
 	yosys -p 'read_verilog LighthouseTopLevel.v; read_verilog  blackboxes.v; synth_ice40 -top LighthouseTopLevel; write_json $@'
 
 %.asc: %.json $(PIN_DEF)
-	nextpnr-ice40 --seed 2 --up5k --json $< --asc $@ --pcf $(PIN_DEF)
+	nextpnr-ice40 --seed 1 --up5k --json $< --asc $@ --pcf $(PIN_DEF) --timing-allow-fail
 	# python3 tools/update_bitstream_comment.py $@ "$(VERSION)"
 
 %.bin: %.asc

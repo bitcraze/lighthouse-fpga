@@ -23,6 +23,12 @@ identity and sync offset are used.
 
 ## UART Protocol
 
+The two data flow, received from the deck and sent to the deck, are independent.
+The deck will send a continious flow of frame containing the received pulse
+data. Commands can be sent to the deck to control LEDs and reset.
+
+### Received from the deck
+
 Frames of 12 bytes are sent to the UART. The baudrate is 230400 baud.
 Twice per second, an 'all-ones' frame of 12 bytes with value 0xFF is sent.
 This is used as a synchronization frame to detect frame boundary.
@@ -59,6 +65,48 @@ Note on the nPoly:
  - The slow bit is ```nPoly & 0x01```
  - The mode of the basestation is ```(nPoly / 2) + 1```
 
+### Sent to the deck
+
+The FPGA runs a simple state machine to receive commands form the serial ports.
+All command contains one command and one argument byte. The Byte 0xFF is a NOP
+command and an invalid argument so it can be used to reset the command receiver
+and can be sent to make sure the FPGA is ready to accept commands.
+
+#### Set LED (0x01)
+
+Sets the deck LED state
+
+```
+    0                   1
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    SET_LED    |0 0| G | Y | R |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+ - **SET_LED**: 0x01, Set LED command
+ - **G, Y, B**: Control value for the Green, Yellow, Red LED. Possible values are:
+   - **0**: OFF
+   - **1**: Slow blink (1 hz)
+   - **2**: Fast blink (4 Hz)
+   - **3**: ON
+
+#### Reset to bootloader (0xBC)
+
+Reset the FPGA and load the bootloader configuration. Allows to access the SPI
+flash to re-flash a new bitstream or to access or write settings.
+
+```
+    0                   1
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      RESET    | TO_BOOTLOADER |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+- **RESET**: 0xBC, Reset command
+- **TO_BOOTLOADER**: 0xCF, Value to send to reset to bootloader. Currently any
+  other values are ignored.
+
+
 ## Building and programming
 
 To build the project you need the [Icestorm](http://www.clifford.at/icestorm/#install) toolchain. Icestorm, Yosys and Arachne-PNR needs to be installed and in the path.
@@ -83,6 +131,8 @@ you can use the [integrated bootloader](https://github.com/bitcraze/lighthouse-b
 
 ## Tools
 
+### print_frame.py
+
 The ```print_frame.py``` script in the tools folder can print decoded frame:
 
 ```
@@ -106,4 +156,23 @@ Sensor: 1  TS:5e0f71  Width: 119  Mode: 1(1)  SyncTime: 70711  BeamWord:1511f   
 Sensor: 2  TS:5e1189  Width: 113  Mode: 1(1)  SyncTime:     0  BeamWord:0d239
 Sensor: 3  TS:5e1314  Width: 127  Mode: 1(1)  SyncTime:     0  BeamWord:08c31
 (...)
+```
+
+### reboot.py
+
+```tools/reboot.py``` sends the reset to bootloader command to the FPGA to
+reboot it to bootloader. Used together with the bootloader it allows to update
+the bitstream when deveopping without having to touch the deck:
+
+```
+$ tools/reboot.py /dev/ttyUSB0 && ../lighthouse-bootloader/scripts/uart_bootloader.py /dev/ttyUSB0 lighthouse.bin
+Reset command sent!
+Bootloader version 2
+flash ID: 0xEF 0x40 0x14 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 
+Comparing first and last 256 bytes ...
+Different bitstream, flashing the new one ...
+Erasing 64K at 0x00020000
+Erasing 64K at 0x00030000
+Programming ...
+Booting!
 ```
