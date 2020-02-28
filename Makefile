@@ -6,12 +6,12 @@ PIN_DEF = lighthouse4_revB.pcf
 DEVICE = up5k
 PACKAGE = sg48
 
-all: $(PROJ).bin
+all: generate_verilog bitstream
 
 generate_verilog:
 	sbt "runMain lighthouse.GenerateTopLevel"
 
-LighthouseTopLevel.v: generate_verilog
+bitstream: $(PROJ).bin
 
 $(PROJ).json: LighthouseTopLevel.v
 	yosys -p 'read_verilog LighthouseTopLevel.v; read_verilog  blackboxes.v; synth_ice40 -top LighthouseTopLevel; write_json $@'
@@ -41,4 +41,4 @@ clean:
 	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin $(PROJ)_timing.v *.vcd
 
 .SECONDARY:
-.PHONY: all prog clean generate_verilog
+.PHONY: all prog clean generate_verilog bitstream

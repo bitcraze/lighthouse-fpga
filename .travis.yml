@@ -3,6 +3,6 @@ language: c
 services:
   - docker
 before_install:
-  - docker pull bitcraze/fpga-builder:1
+  - docker pull bitcraze/fpga-builder:2
 script:
-  - docker run --rm -v ${PWD}:/module bitcraze/fpga-builder:1 tools/build/build
+  - docker run --rm -v ${PWD}:/module bitcraze/fpga-builder:2 tools/build/build

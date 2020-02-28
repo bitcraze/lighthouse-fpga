@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "environmentReq": [
+    "ice40"
+  ],
+  "artifacts": {
+    "file": [
+      {
+        "source": "lighthouse.bin",
+        "insertTag": true,
+        "destination": "currDir"
+      }
+    ]
+  }
+}

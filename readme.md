@@ -1,4 +1,4 @@
-# Lighthouse receiver
+# Lighthouse receiver [![Build Status](https://travis-ci.org/bitcraze/lighthouse-fpga.svg)](https://travis-ci.org/bitcraze/lighthouse-fpga)
 
 This project contains a FPGA implementation for the [Bicraze Lighthouse deck](https://www.bitcraze.io/lighthouse-positioning-deck/) FPGA.
 It is using the TS4231 light to digital converter and targets a Lattice ice40up5k FPGA.
@@ -120,8 +120,11 @@ make
 ```
 
 This builds the FPGA bitstream. If the timing does not pass, change the nextpnr seed in the makefile until it passes.
+The script ```tools/search_seed.py``` can be used to automatically search for a working seed.
 
-When developping, ```make generate_verilog && make``` can be used to regenerate verilog from scala/spinalHDL.
+Two make target exists to help development: ```make generate_verilog```
+generates verilog from scala, ```make bitstream``` only builds the bitstream from
+the verilog (useful if the generation was launched from an IDE).
 
 If you have your deck connected to a serial port (be careful to use a 3.0V serial port, 3.3V will damage the deck!),
 you can use the [integrated bootloader](https://github.com/bitcraze/lighthouse-bootloader) to program the deck:
