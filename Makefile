@@ -18,6 +18,7 @@ $(PROJ).json: LighthouseTopLevel.v
 
 %.asc: %.json $(PIN_DEF)
 	nextpnr-ice40 --seed 18 --up5k --json $< --asc $@ --pcf $(PIN_DEF)
+	python3 tools/update_bitstream_comment.py $@ "$(VERSION)"
 
 %.bin: %.asc
 	icepack $< $@
