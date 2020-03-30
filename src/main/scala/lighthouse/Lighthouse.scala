@@ -19,7 +19,7 @@ class LighthouseTopLevel(nSensors: Int = 4,
                          frequency: HertzNumber = 48 MHz,
                          useDdrDecoder: Boolean = true,
                          uartBaudrate: HertzNumber = 230400 Hz,
-                         decodershortDelay: TimeNumber = 124 ns, 
+                         decodershortDelay: TimeNumber = 124 ns,
                          decoderUnsyncDelay: TimeNumber = 235 ns
                         ) extends Component {
   val io = new Bundle {
@@ -83,7 +83,7 @@ class LighthouseTopLevel(nSensors: Int = 4,
   val core = new ClockingArea(clkCtrl.coreClockDomain) {
 
     val beamWords = Vec(Stream(Bits(17 bits)), nSensors)
-    
+
     for (sensor <- 0 until nSensors) {
       // DDR IOs ...
       val ioE = SB_IO.ddrRegistredInout
@@ -178,7 +178,7 @@ class LighthouseTopLevel(nSensors: Int = 4,
         beamWord := 0
       }
 
-      idBeamWords(sensor) << idBeamWord.toStream
+      idBeamWords(sensor) << idBeamWord.toStream.queue(2)
     }
 
     // Create the combined beam stream.
@@ -274,7 +274,7 @@ import spinal.core.sim._
 
 object TopLevelSim {
   def main(args: Array[String]): Unit = {
-    
+
     SimConfig.allOptimisation
             .addSimulatorFlag("-Wno-PINMISSING -I../../sim_rtl")
             .withWave
@@ -382,7 +382,7 @@ object TopLevelSimWithSalaeData {
 
     var d = false
     var e = false
-    
+
 
     SimConfig.allOptimisation
             .addSimulatorFlag("-Wno-PINMISSING -I../../sim_rtl")
