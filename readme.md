@@ -55,15 +55,15 @@ little-endian form. The frame format is:
 
  - **SID**: Sensor ID, sensor on which the pulse was received
  - **Width**: 16 Bits width of the pulse in a 24MHz clock.
- - **nPoly**: if < 0x200, index of the polynomial detected for this pulse. Otherwise, no polynomial detected.
+ - **nPoly**: The polynomial for this pulse, see note below for details.
  - **Sync Offset**: If not 0, offset from the basestation sync event and this pulse. Otherwise, no offset found.
  - **Beam Word**: Raw 17 bits data reveived on the beam
  - **Timestamp**: 24 Bits timestamp in the receiver's 24MHz clock. All sensor share the same clock.
 
 Note on the nPoly:
- - Each V2 basestation uses 2 polynomials to encode one bit of 'slow data' each turn (ie. each two received sweep)
- - The slow bit is ```nPoly & 0x01```
- - The mode of the basestation is ```(nPoly / 2) + 1```
+ - nPoly is valid if the top bit is zero, ```(nPoly & 0x20) == 0```, otherwise no polynomial was detected for this pulse.
+ - The channel of the base station is ```(nPoly / 2) + 1```, channels range from 1 to 16. Channel is also called mode in the Basestation configuration.
+ - Each V2 base station uses 2 polynomials to encode one bit of 'slow data' each turn (ie. each two received sweeps). The slow bit is ```nPoly & 0x01```
 
 ### Sent to the deck
 
