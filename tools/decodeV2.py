@@ -18,14 +18,15 @@ def ts_add(a, b):
     return (a + b) & 0x00ffffff
 
 
-PERIODS = [959000, 957000,
-           953000, 949000,
-           947000, 943000,
-           941000, 939000,
-           937000, 929000,
-           919000, 911000,
-           907000, 901000,
-           893000, 887000]
+# The cycle times from the Lighhouse base stations is expressed in a 48 MHz clock, we use 24 MHz, hence the / 2.
+PERIODS = [959000 / 2, 957000 / 2,
+           953000 / 2, 949000 / 2,
+           947000 / 2, 943000 / 2,
+           941000 / 2, 939000 / 2,
+           937000 / 2, 929000 / 2,
+           919000 / 2, 911000 / 2,
+           907000 / 2, 901000 / 2,
+           893000 / 2, 887000 / 2]
 
 class SweepData:
     def __init__(self, ts, width, offset, channel, slow_bit):
@@ -190,6 +191,7 @@ class BaseStation:
             return False
 
         dt = ts_sub(b.ts, a.ts)
+        # 220000 ticks is around 180 degrees
         if dt > 220000:
             return False
 
@@ -206,8 +208,8 @@ class BaseStation:
             offset1 = b.sensors[i].offset
             period = PERIODS[self.channel]
 
-            firstBeam = ((offset0 * 8.0) / period) * 2 * math.pi
-            secondBeam = ((offset1 * 8.0) / period) * 2 * math.pi
+            firstBeam = (offset0 / period) * 2 * math.pi
+            secondBeam = (offset1 / period) * 2 * math.pi
             azimuth, elevation = calculateAE(firstBeam, secondBeam)
 
             result.set(i, azimuth, elevation)
@@ -276,8 +278,12 @@ if __name__ == "__main__":
     while(len(reading) == 12):
         timestamp = struct.unpack("<I", reading[9:] + b'\x00')[0]
         beam_word = struct.unpack("<I", reading[6:9] + b'\x00')[0]
-        offset = struct.unpack("<I", reading[3:6] + b'\x00')[0]
+        offset_6 = struct.unpack("<I", reading[3:6] + b'\x00')[0]
         first_word = struct.unpack("<I", reading[:3] + b'\x00')[0]
+
+        # Offset is expressed in a 6 MHz clock, while the timestamp uses a 24 MHz clock.
+        # update offset to a 24 MHz clock
+        offset = offset_6 * 4
 
         sensor = first_word & 0x03
         width = (first_word >> 8) & 0xffff
@@ -292,7 +298,7 @@ if __name__ == "__main__":
             slow_bit = None
 
         # Sync frame, ignore it
-        if offset == 0xffffff:
+        if offset_6 == 0xffffff:
             reading = src.read(12)
             continue
 
