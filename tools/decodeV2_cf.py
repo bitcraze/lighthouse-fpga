@@ -12,7 +12,7 @@ PULSE_PROCESSOR_N_SWEEPS = 2
 PULSE_PROCESSOR_N_BASE_STATIONS = 2
 PULSE_PROCESSOR_N_SENSORS = 4
 MAX_TICKS_SENSOR_TO_SENSOR = 10000
-MAX_TICKS_BETWEEN_SWEEPS = 220000
+MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS = 10
 NO_CHANNEL = 0xff
 NO_SENSOR = -1
 NO_OFFSET = 0
@@ -93,7 +93,7 @@ class pulseProcessorResult_t:
 class pulseProcessorV2SweepBlock_t:
     def __init__(self):
         self.offset = [0] * PULSE_PROCESSOR_N_SENSORS
-        self.timestamp = None  # Timestamp of sensor 0
+        self.timestamp = None  # Timestamp of offset start, that is when the rotor is starting a new revolution
         self.channel = None
         self.slowbit = None
 
@@ -157,7 +157,7 @@ def processBlock(pulseWorkspace, block):
             timestamp_delta = TS_DIFF(baseSensor.timestamp, sensor.timestamp)
             block.offset[i] = TS_DIFF(baseSensor.offset, timestamp_delta)
 
-    block.timestamp = pulseWorkspace.sensors[0].timestamp
+    block.timestamp = TS_DIFF(baseSensor.timestamp, baseSensor.offset)
 
     return True;
 
@@ -227,7 +227,10 @@ def isBlockPairGood(latest, storage):
     if latest.offset[0] < storage.offset[0]:
         return False
 
-    if TS_DIFF(latest.timestamp, storage.timestamp) > MAX_TICKS_BETWEEN_SWEEPS:
+    # We want to check if
+    # abs(latest.timestamp - storage.timestamp) < MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS
+    # but timestamps are unsigned 24 bit unsigned integers
+    if TS_DIFF(latest.timestamp + MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS, storage.timestamp) > MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS * 2:
         return False
 
     return True
