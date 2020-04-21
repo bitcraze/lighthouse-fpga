@@ -9,8 +9,10 @@ import copy
 
 UART_FRAME_LENGTH = 12
 PULSE_PROCESSOR_N_SWEEPS = 2
-PULSE_PROCESSOR_N_BASE_STATIONS = 2
+PULSE_PROCESSOR_N_BASE_STATIONS = 3
 PULSE_PROCESSOR_N_SENSORS = 4
+PULSE_PROCRSSOR_N_CONCURRENT_BLOCKS = 2
+PULSE_PROCESSOR_N_WORKSPACE = PULSE_PROCESSOR_N_SENSORS * PULSE_PROCRSSOR_N_CONCURRENT_BLOCKS
 MAX_TICKS_SENSOR_TO_SENSOR = 10000
 MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS = 10
 NO_CHANNEL = 0xff
@@ -32,36 +34,27 @@ CYCLE_PERIODS = [
 
 class pulseProcessorFrame_t:
     def __init__(self):
-        self.sensor = None
-        self.timestamp = None
+        self.sensor = 0
+        self.timestamp = 0
 
-        self.offset = None
+        self.offset = 0
         # Channel is zero indexed (0-15) here, while it is one indexed in the base station config (1 - 16)
-        self.channel = None  # Valid if channelFound is true
-        self.slowbit = None  # Valid if channelFound is true
-        channelFound = None
+        self.channel = 0  # Valid if channelFound is true
+        self.slowbit = 0  # Valid if channelFound is true
+        channelFound = False
 
 class lighthouseUartFrame_t:
     def __init__(self):
         self.isSyncFrame = False
         self.data = pulseProcessorFrame_t()
 
-class pulseProcessorV2Pulse_t:
-    def __init__(self):
-        self.timestamp = 0
-        self.offset = 0
-        self.channel = 0
-        self.slowbit = 0
-        self.channelFound = False  # Indicates if channel and slowbit are valid
-        self.isSet = False  # Indicates that the data in this struct has been set
-
 class pulseProcessorV2PulseWorkspace_t:
     def __init__(self):
-        self.sensors = []
-        for i in range(PULSE_PROCESSOR_N_SENSORS):
-            self.sensors.append(pulseProcessorV2Pulse_t())
+        self.slots = []
+        for i in range(PULSE_PROCESSOR_N_WORKSPACE):
+            self.slots.append(pulseProcessorFrame_t())
+        self.slotsUsed = 0
         self.latestTimestamp = 0
-
 
 class pulseProcessor_t:
     def __init__(self):
@@ -71,6 +64,10 @@ class pulseProcessor_t:
         self.blocksV2 = []
         for i in range(PULSE_PROCESSOR_N_BASE_STATIONS):
             self.blocksV2.append(pulseProcessorV2SweepBlock_t())
+
+        self.tempBlocks = []
+        for i in range(PULSE_PROCRSSOR_N_CONCURRENT_BLOCKS):
+            self.tempBlocks.append(pulseProcessorV2SweepBlock_t())
 
 class pulseProcessorBaseStationMeasuremnt_t:
     def __init__(self):
@@ -100,22 +97,24 @@ class pulseProcessorV2SweepBlock_t:
 def TS_DIFF(a, b):
     return (a - b) & 0x00ffffff
 
-def processBlock(pulseWorkspace, block):
-    # Check we have data for all sensors
+def processWorkspaceBlock(pulseWorkspace, blockBaseIndex, block):
+    # Check that we have data for all sensors
+    sensorMask = 0
     for i in range(PULSE_PROCESSOR_N_SENSORS):
-        if not pulseWorkspace.sensors[i].isSet:
-            # The sensor data is missing - discard
-            return False
+        slotNr = blockBaseIndex + i
+        frame = pulseWorkspace.slots[slotNr]
+        sensorMask |= 1 << frame.sensor
+    if sensorMask != 0xf:
+        # All sensors not present - discard
+        return False
 
-    # Channel - should all be the same except one that is not set
-    channel_count = 0
+    # Channel - should all be the same or not set
     block.channel = NO_CHANNEL;
     for i in range(PULSE_PROCESSOR_N_SENSORS):
-        sensor = pulseWorkspace.sensors[i]
+        slotNr = blockBaseIndex + i
+        sensor = pulseWorkspace.slots[slotNr]
 
         if sensor.channelFound:
-            channel_count += 1
-
             if block.channel == NO_CHANNEL:
                 block.channel = sensor.channel
                 block.slowbit = sensor.slowbit
@@ -124,21 +123,18 @@ def processBlock(pulseWorkspace, block):
                 # Multiple channels in the block - discard
                 return False;
 
-            if not block.slowbit == sensor.slowbit:
-                # Multiple slowbits in the block - discard
-                return False
-
-    if channel_count < 1:
+    if block.channel == NO_CHANNEL:
         # Channel is missing - discard
         return False
 
     # Offset - should be offset on one and only one sensor
     indexWithOffset = NO_SENSOR
     for i in range(PULSE_PROCESSOR_N_SENSORS):
-        sensor = pulseWorkspace.sensors[i]
+        slotNr = blockBaseIndex + i
+        sensor = pulseWorkspace.slots[slotNr]
         if not sensor.offset == NO_OFFSET:
             if indexWithOffset == NO_SENSOR:
-                indexWithOffset = i
+                indexWithOffset = slotNr
             else:
                 # Duplicate offsets - discard
                 return False
@@ -148,55 +144,98 @@ def processBlock(pulseWorkspace, block):
         return False
 
     # Calculate offsets for all sensors
-    baseSensor = pulseWorkspace.sensors[indexWithOffset]
+    baseSensor = pulseWorkspace.slots[indexWithOffset]
     for i in range(PULSE_PROCESSOR_N_SENSORS):
-        sensor = pulseWorkspace.sensors[i]
-        if i == indexWithOffset:
+        slotNr = blockBaseIndex + i
+        sensor = pulseWorkspace.slots[slotNr]
+        if slotNr == indexWithOffset:
             block.offset[i] = sensor.offset
         else:
             timestamp_delta = TS_DIFF(baseSensor.timestamp, sensor.timestamp)
             block.offset[i] = TS_DIFF(baseSensor.offset, timestamp_delta)
 
     block.timestamp = TS_DIFF(baseSensor.timestamp, baseSensor.offset)
+    return True
 
-    return True;
+def processWorkspace(pulseWorkspace, blocks):
+    slotsUsed = pulseWorkspace.slotsUsed
+
+    # Set channel for frames preceding frame with known channel.
+    # The FPGA decoding process does not fill in this data since
+    # it needs data from a second sensor to make sens of the first one
+    for i in range(slotsUsed - 1):
+        previousFrame = pulseWorkspace.slots[i]
+        frame = pulseWorkspace.slots[i + 1]
+        if (not previousFrame.channelFound):
+            if frame.channelFound:
+                previousFrame.channel = frame.channel
+                previousFrame.slowbit = frame.slowbit
+                previousFrame.channelFound = frame.channelFound
+
+    # Handle missing channels
+    # Sometimes the FPGA failes to decode the bitstream for a sensor, but we
+    # can assume the timestamp is correct anyway. To know which channel it
+    # has, we add the limitation that we only accept blocks with data from
+    # all sensors. Further more we only accept workspaces with full consecutive
+    # blocks
+
+    # We must have at least one block
+    if slotsUsed < PULSE_PROCESSOR_N_SENSORS:
+        return 0
+
+    # The number of slots used must be a multiple of the block size
+    if not (slotsUsed % PULSE_PROCESSOR_N_SENSORS == 0):
+        return 0
+
+    # Process one block at a time in the workspace
+    blocksInWorkspace = int(slotsUsed / PULSE_PROCESSOR_N_SENSORS)
+    for blockNr in range(blocksInWorkspace):
+        blockBaseIndex = blockNr * PULSE_PROCESSOR_N_SENSORS
+        if not processWorkspaceBlock(pulseWorkspace, blockBaseIndex, blocks[blockNr]):
+            print("Broken block")
+            return 0
+
+    return blocksInWorkspace;
 
 def storePulse(frameData, pulseWorkspace):
-    sensor = frameData.sensor
-    storage = pulseWorkspace.sensors[sensor]
-
     result = False
-    if not storage.isSet:
-        storage.timestamp = frameData.timestamp
-        storage.offset = frameData.offset
-        storage.channel = frameData.channel
-        storage.slowbit = frameData.slowbit
-        storage.channelFound = frameData.channelFound
+    if pulseWorkspace.slotsUsed < PULSE_PROCESSOR_N_WORKSPACE:
+        slot = pulseWorkspace.slots[pulseWorkspace.slotsUsed]
 
-        storage.isSet = True
+        slot.sensor = frameData.sensor
+        slot.timestamp = frameData.timestamp
+        slot.offset = frameData.offset
+        slot.channel = frameData.channel
+        slot.slowbit = frameData.slowbit
+        slot.channelFound = frameData.channelFound
+
+        pulseWorkspace.slotsUsed += 1
         result = True
 
     return result;
 
 def clearWorkspace(pulseWorkspace):
-    for i in range(PULSE_PROCESSOR_N_SENSORS):
-        pulseWorkspace.sensors[i].isSet = False
+    pulseWorkspace.slotsUsed = 0
 
-def processFrame(frameData, pulseWorkspace, block):
-    result = False
+def processFrame(frameData, pulseWorkspace, blocks):
+    nrOfBlocks = 0
 
     delta = TS_DIFF(frameData.timestamp, pulseWorkspace.latestTimestamp)
-    isEndOfPreviuosBlock = (delta > MAX_TICKS_SENSOR_TO_SENSOR)
-    if (isEndOfPreviuosBlock):
-        result = processBlock(pulseWorkspace, block);
+    isFirstFrameInNewWorkspace = (delta > MAX_TICKS_SENSOR_TO_SENSOR)
+    if (isFirstFrameInNewWorkspace):
+        nrOfBlocks = processWorkspace(pulseWorkspace, blocks);
+        # print_workspace(pulseWorkspace)
+        for i in range(nrOfBlocks):
+            print_block(blocks[i])
         clearWorkspace(pulseWorkspace);
 
     pulseWorkspace.latestTimestamp = frameData.timestamp;
 
     if (not storePulse(frameData, pulseWorkspace)):
+        print("Workspace overflow")
         clearWorkspace(pulseWorkspace)
 
-    return result;
+    return nrOfBlocks, isFirstFrameInNewWorkspace;
 
 def calculateAzimuthElevation(firstBeam, secondBeam, angles):
     a120 = math.pi * 120.0 / 180.0
@@ -224,9 +263,6 @@ def isBlockPairGood(latest, storage):
     if not latest.channel == storage.channel:
         return False
 
-    if latest.offset[0] < storage.offset[0]:
-        return False
-
     # We want to check if
     # abs(latest.timestamp - storage.timestamp) < MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS
     # but timestamps are unsigned 24 bit unsigned integers
@@ -240,8 +276,10 @@ def pulseProcessorV2ProcessPulse(state, frameData, angles):
     axis = None;
     anglesMeasured = False
 
-    block = pulseProcessorV2SweepBlock_t()
-    if (processFrame(frameData, state.pulseWorkspace, block)):
+    blocks = state.tempBlocks
+    nrOfBlocks, isFirstFrameInNewWorkspace = processFrame(frameData, state.pulseWorkspace, blocks)
+    for blockIndex in range(nrOfBlocks):
+        block = blocks[blockIndex]
         channel = block.channel;
         if (channel < PULSE_PROCESSOR_N_BASE_STATIONS):
             previousBlock = state.blocksV2[channel]
@@ -251,22 +289,29 @@ def pulseProcessorV2ProcessPulse(state, frameData, angles):
                 baseStation = block.channel;
                 axis = 'sweepDirection_y';
                 anglesMeasured = True;
+                print("--- second sweep chan:", channel)
             else:
-                state.blocksV2[channel] = block
+                state.blocksV2[channel] = copy.copy(block)
+                print("... first sweep chan:", channel)
+
+    if nrOfBlocks == 0:
+        if isFirstFrameInNewWorkspace:
+            print("... bad workspace")
 
     return anglesMeasured, baseStation, axis;
 
+def clear_angles(angles):
+    for sensor in range(PULSE_PROCESSOR_N_SENSORS):
+        for bs in range(PULSE_PROCESSOR_N_BASE_STATIONS):
+            a = angles.sensorMeasurements[sensor].baseStationMeasurements[bs].angles
+            a[0] = 0
+            a[1] = 0
+
 def processUartFrame(appState, angles, frame):
+    clear_angles(angles)
     resultOk, basestation, axis = pulseProcessorV2ProcessPulse(appState, frame.data, angles)
     if (resultOk):
-        # Print all angles
-        for sensor in range(PULSE_PROCESSOR_N_SENSORS):
-            print("s:{} ".format(sensor), end='')
-            for bs in range(PULSE_PROCESSOR_N_BASE_STATIONS):
-                a = angles.sensorMeasurements[sensor].baseStationMeasurements[bs].angles
-                print("[{:-6.3f}, {:-6.3f}]".format(a[0], a[1]), end='')
-            print("  ", end='')
-        print()
+        print_angles(angles)
 
 def getUartFrameRaw(frame, data):
     syncCounter = 0
@@ -297,21 +342,37 @@ def getUartFrameRaw(frame, data):
 
     return isFrameValid;
 
-def print_frame(frame):
-    if frame.isSyncFrame:
-        print("Sync")
+def print_frame(data):
+    if data.channelFound:
+        chan_slow = "{:-2d}({})".format(data.channel, data.slowbit)
     else:
-        if frame.data.channelFound:
-            chan_slow = "{:-2d}({})".format(frame.data.channel, frame.data.slowbit)
-        else:
-            chan_slow = " -(-)"
+        chan_slow = " -(-)"
 
-        if frame.data.offset != 0:
-            offset = "{:-6d}".format(frame.data.offset)
-        else:
-            offset = "     -"
+    if data.offset != 0:
+        offset = "{:-6d}".format(data.offset)
+    else:
+        offset = "     -"
 
-        print("Sensor:{}  TS:{:08d}  offset:{}  Chan:{}".format(frame.data.sensor, frame.data.timestamp, offset, chan_slow))
+    print("Sensor:{}  TS:{:08d}  offset:{}  Chan:{}".format(data.sensor, data.timestamp, offset, chan_slow))
+
+def print_workspace(pulseWorkspace):
+    print("*** start workspace", pulseWorkspace.slotsUsed)
+    for i in range(pulseWorkspace.slotsUsed):
+        frame = pulseWorkspace.slots[i]
+        print_frame(frame)
+    print("*** end workspace")
+
+def print_block(block):
+    print("Block: ts:", block.timestamp, "chan:", block.channel, "sb:", block.slowbit, "offset:", block.offset)
+
+def print_angles(angles):
+    for sensor in range(PULSE_PROCESSOR_N_SENSORS):
+        print("s:{} ".format(sensor), end='')
+        for bs in range(PULSE_PROCESSOR_N_BASE_STATIONS):
+            a = angles.sensorMeasurements[sensor].baseStationMeasurements[bs].angles
+            print("[{:-6.3f}, {:-6.3f}]".format(a[0], a[1]), end='')
+        print("  ", end='')
+    print()
 
 
 
@@ -347,7 +408,7 @@ if __name__ == "__main__":
         frame = lighthouseUartFrame_t()
         getUartFrameRaw(frame, uartData)
         if not frame.isSyncFrame:
-            # print_frame(frame)
             processUartFrame(state, angles, frame);
+            # print_frame(frame.data)
 
         uartData = src.read(12)
