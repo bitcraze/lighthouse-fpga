@@ -18,6 +18,7 @@ MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS = 10
 NO_CHANNEL = 0xff
 NO_SENSOR = -1
 NO_OFFSET = 0
+MIN_TICKS_BETWEEN_SLOW_BITS = int(0.8 * 24000000 / 50)
 
 
 # The cycle times from the Lighhouse base stations is expressed in a 48 MHz clock, we use 24 MHz, hence the / 2.
@@ -31,6 +32,37 @@ CYCLE_PERIODS = [
     907000 / 2, 901000 / 2,
     893000 / 2, 887000 / 2]
 
+
+class SlowBitValidtor:
+    def __init__(self, channel):
+        self.channel = channel
+        self.ts = None
+        self.good_count = 0
+
+    def push(self, ts, bit):
+        if self.ts:
+            is_ok = True
+            # We expect around 50 Hz update rate
+            expected = 24000000 / 50
+            delta = TS_DIFF(ts, self.ts)
+            if delta < expected * 0.8:
+                print("SlowBitValidtor: got bits too often (", delta, ") on channel", self.channel, "after", self.good_count, "good bits")
+                is_ok = False
+            if delta > expected * 1.2:
+                missed_bits = round(delta / expected) - 1
+                print("Missed ", missed_bits, "bits on channel", self.channel, "after", self.good_count, "good bits")
+                is_ok = False
+
+            if is_ok:
+                self.good_count += 1
+            else:
+                self.good_count = 0
+
+        self.ts = ts
+
+slowbitValidators = []
+for i in range(PULSE_PROCESSOR_N_BASE_STATIONS):
+    slowbitValidators.append(SlowBitValidtor(i))
 
 class pulseProcessorFrame_t:
     def __init__(self):
@@ -68,6 +100,8 @@ class pulseProcessor_t:
         self.tempBlocks = []
         for i in range(PULSE_PROCRSSOR_N_CONCURRENT_BLOCKS):
             self.tempBlocks.append(pulseProcessorV2SweepBlock_t())
+
+        self.latestSlowbitTs = [0] * PULSE_PROCESSOR_N_BASE_STATIONS
 
 class pulseProcessorBaseStationMeasuremnt_t:
     def __init__(self):
@@ -274,6 +308,27 @@ def isBlockPairGood(latest, storage):
 
     return True
 
+def processSlowBit(state, frameData):
+    if frameData.offset != NO_OFFSET and frameData.channelFound:
+        ts_zero = TS_DIFF(frameData.timestamp, frameData.offset)
+        channel = frameData.channel
+        slowbit = frameData.slowbit
+
+        if channel < PULSE_PROCESSOR_N_BASE_STATIONS:
+            is_new_bit = TS_ABS_DIFF_LARGER_THAN(ts_zero, state.latestSlowbitTs[channel], MIN_TICKS_BETWEEN_SLOW_BITS)
+
+            if (abs(ts_zero - state.latestSlowbitTs[channel]) < 100000) and is_new_bit:
+                print("!")
+
+            state.latestSlowbitTs[channel] = ts_zero
+
+            if is_new_bit:
+                # print("slowbit", channel, ts_zero, slowbit)
+                # slowbitValidators[channel].push(ts_zero, slowbit)
+                pass
+
+
+
 def pulseProcessorV2ProcessPulse(state, frameData, angles):
     baseStation = None;
     axis = None;
@@ -300,6 +355,7 @@ def pulseProcessorV2ProcessPulse(state, frameData, angles):
     if nrOfBlocks == 0:
         if isFirstFrameInNewWorkspace:
             print("... bad workspace")
+    processSlowBit(state, frameData)
 
     return anglesMeasured, baseStation, axis;
 
