@@ -97,6 +97,12 @@ class pulseProcessorV2SweepBlock_t:
 def TS_DIFF(a, b):
     return (a - b) & 0x00ffffff
 
+# We want to check if
+# abs(a - b) < limit
+# but timestamps are unsigned 24 bit unsigned integers
+def TS_ABS_DIFF_LARGER_THAN(a, b, limit):
+    return TS_DIFF(a + limit, b) > limit * 2
+
 def processWorkspaceBlock(pulseWorkspace, blockBaseIndex, block):
     # Check that we have data for all sensors
     sensorMask = 0
@@ -220,8 +226,8 @@ def clearWorkspace(pulseWorkspace):
 def processFrame(frameData, pulseWorkspace, blocks):
     nrOfBlocks = 0
 
-    delta = TS_DIFF(frameData.timestamp, pulseWorkspace.latestTimestamp)
-    isFirstFrameInNewWorkspace = (delta > MAX_TICKS_SENSOR_TO_SENSOR)
+    # Sensor timestamps may arrive in the wrong order, we need an abs() when checking the diff
+    isFirstFrameInNewWorkspace = TS_ABS_DIFF_LARGER_THAN(frameData.timestamp, pulseWorkspace.latestTimestamp, MAX_TICKS_SENSOR_TO_SENSOR)
     if (isFirstFrameInNewWorkspace):
         nrOfBlocks = processWorkspace(pulseWorkspace, blocks);
         # print_workspace(pulseWorkspace)
@@ -263,10 +269,7 @@ def isBlockPairGood(latest, storage):
     if not latest.channel == storage.channel:
         return False
 
-    # We want to check if
-    # abs(latest.timestamp - storage.timestamp) < MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS
-    # but timestamps are unsigned 24 bit unsigned integers
-    if TS_DIFF(latest.timestamp + MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS, storage.timestamp) > MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS * 2:
+    if TS_ABS_DIFF_LARGER_THAN(latest.timestamp, storage.timestamp, MAX_TICKS_BETWEEN_SWEEP_STARTS_TWO_BLOCKS):
         return False
 
     return True
