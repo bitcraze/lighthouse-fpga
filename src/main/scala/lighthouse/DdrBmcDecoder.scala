@@ -1,10 +1,35 @@
+/**
+ * ,---------,       ____  _ __
+ * |  ,-^-,  |      / __ )(_) /_______________ _____  ___
+ * | (  O  ) |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
+ * | / ,--´  |    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
+ *    +------`   /_____/_/\__/\___/_/   \__,_/ /___/\___/
+ *
+ * Lighhouse deck FPGA
+ *
+ * Copyright (C) 2020 Bitcraze AB
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, in version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 package lighthouse
 
 import spinal.core._
 import spinal.lib._
 import lighthouse._
 
-class DdrBmcDecoder(shortDelay: TimeNumber = 124 ns, 
+class DdrBmcDecoder(shortDelay: TimeNumber = 124 ns,
                     unsyncDelay: TimeNumber = 235 ns) extends Component {
     val io = new Bundle {
         val signal = in(Ddr())
@@ -34,7 +59,7 @@ class DdrBmcDecoder(shortDelay: TimeNumber = 124 ns,
 
     val sample = Reg(counter.sr.clone()) init 0
 
-    when(io.signal.edge(0)) { 
+    when(io.signal.edge(0)) {
         counter.reset(1)
         sample := counter.sr
     }.elsewhen(io.signal.edge(1)) {
@@ -79,13 +104,13 @@ class DdrBmcDecoder(shortDelay: TimeNumber = 124 ns,
                             data.payload := False
                             data.valid := True
                             decodingOne := False
-                        // }   
+                        // }
                     }
                 }
             }
         }
     }
-    
+
 }
 
 import spinal.sim._
@@ -93,7 +118,7 @@ import spinal.core.sim._
 
 object DdrBmcDecoderSim {
   def main(args: Array[String]): Unit = {
-    
+
     SimConfig.allOptimisation
             .addSimulatorFlag("-I../../sim_rtl")
             .withWave
@@ -178,7 +203,7 @@ object DdrBmcDecoderSim {
       dut.io.signal.v(0) #= false
       dut.io.signal.v(1) #= false
       dut.clockDomain.waitRisingEdge(10)
-      
+
 
 
 

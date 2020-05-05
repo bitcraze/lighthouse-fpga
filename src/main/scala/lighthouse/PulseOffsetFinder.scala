@@ -1,3 +1,28 @@
+/**
+ * ,---------,       ____  _ __
+ * |  ,-^-,  |      / __ )(_) /_______________ _____  ___
+ * | (  O  ) |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
+ * | / ,--´  |    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
+ *    +------`   /_____/_/\__/\___/_/   \__,_/ /___/\___/
+ *
+ * Lighhouse deck FPGA
+ *
+ * Copyright (C) 2020 Bitcraze AB
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, in version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 package lighthouse
 
 import spinal.core._
@@ -34,7 +59,7 @@ class PulseOffsetFinder(speedMultiplier: Int = 1) extends Component {
     when(offsetFinder.io.found) {
         io.pulseOut.payload.offset := offsetFinder.io.offset
     }
-    
+
     io.pulseOut.valid := False
     io.pulseIn.ready := False
     offsetFinder.io.start := False
@@ -74,7 +99,7 @@ class PulseOffsetFinder(speedMultiplier: Int = 1) extends Component {
                 }
                 lastNPoly := io.pulseIn.payload.npoly.resized
                 io.pulseOut.valid := True
-                when(io.pulseOut.fire) { 
+                when(io.pulseOut.fire) {
                     io.pulseIn.ready := True
                     offsetFinder.io.reset := True
                     goto(idle)
@@ -89,9 +114,9 @@ import spinal.sim._
 import spinal.core.sim._
 
 
-// Sensor: 1, TS: 0C552F, Width: 00B3	0 	1fe72, d: 77445 (12.9ms) | 	1fe72, d: 55285 (9.21ms) | 
-// Sensor: 2, TS: 0C5808, Width: 00AD	0 	0bd25, d: 77627 (12.9ms) | 	0bd25, d: 27055 (4.51ms) | 
-// Sensor: 3, TS: 0C5839, Width: 00B5	0 	05e2e, d: 77639 (12.9ms) | 	05e2e, d: 10681 (1.78ms) | 
+// Sensor: 1, TS: 0C552F, Width: 00B3	0 	1fe72, d: 77445 (12.9ms) | 	1fe72, d: 55285 (9.21ms) |
+// Sensor: 2, TS: 0C5808, Width: 00AD	0 	0bd25, d: 77627 (12.9ms) | 	0bd25, d: 27055 (4.51ms) |
+// Sensor: 3, TS: 0C5839, Width: 00B5	0 	05e2e, d: 77639 (12.9ms) | 	05e2e, d: 10681 (1.78ms) |
 
 object PulseObjectFinderSim {
   def main(args: Array[String]): Unit = {
@@ -109,14 +134,14 @@ object PulseObjectFinderSim {
         dut.io.pulseIn.valid #= false
         dut.io.pulseOut.ready #= false
         dut.clockDomain.waitRisingEdge(10)
-        
+
         dut.io.pulseIn.payload.pulse.timestamp #= 0x0C552F
         dut.io.pulseIn.payload.pulse.width #= 0xB3
         dut.io.pulseIn.payload.beamWord #= 0x1fe72
         dut.io.pulseIn.payload.npoly #= 0x3f
         dut.io.pulseIn.valid #= true
         dut.clockDomain.waitRisingEdge(1)
-        
+
         while (!dut.io.pulseOut.valid.toBoolean) {
             dut.clockDomain.waitRisingEdge(1)
         }

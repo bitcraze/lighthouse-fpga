@@ -1,3 +1,28 @@
+/**
+ * ,---------,       ____  _ __
+ * |  ,-^-,  |      / __ )(_) /_______________ _____  ___
+ * | (  O  ) |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
+ * | / ,--´  |    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
+ *    +------`   /_____/_/\__/\___/_/   \__,_/ /___/\___/
+ *
+ * Lighhouse deck FPGA
+ *
+ * Copyright (C) 2020 Bitcraze AB
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, in version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 package lighthouse
 
 import spinal.core._
@@ -9,7 +34,7 @@ import lighthouse.constants
 /**
   * Finds the offset between the start of the LFSR-generated sequence and a
   * given state. The LFSR is initialized at 0x00001.
-  * 
+  *
   * The full search takes up to (2^17)/speedMultiplier cycles. When
   * speedMultipler > 1, multiple LFSR are running in parallel starting
   * from different point in the LFSR-generated sequence. The state for each
@@ -120,7 +145,7 @@ class OffsetFinder(speedMultiplier: Int = 1) extends Component {
                 }
             }
             val doneState: State = new State {
-                whenIsActive {                    
+                whenIsActive {
                     lfsrMemAddress := io.nPoly << log2Up(speedMultiplier)
                     done(i) := True
                     when(io.start) {
@@ -139,7 +164,7 @@ class OffsetFinder(speedMultiplier: Int = 1) extends Component {
 import spinal.sim._
 import spinal.core.sim._
 
-// Sensor: 2, TS: 0C5808, Width: 00AD	0 	0bd25, d: 77627 (12.9ms) | 	0bd25, d: 27055 (4.51ms) | 
+// Sensor: 2, TS: 0C5808, Width: 00AD	0 	0bd25, d: 77627 (12.9ms) | 	0bd25, d: 27055 (4.51ms) |
 
 object OffsetFinderSim {
   def main(args: Array[String]): Unit = {
