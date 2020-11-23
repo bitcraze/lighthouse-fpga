@@ -6,6 +6,7 @@ import sys
 
 def pnr(seed: int):
     result = subprocess.run(["nextpnr-ice40", "--seed",  str(seed),
+                        "--package", "sg48",
                         "--up5k", "--json", "lighthouse.json", "--asc", 
                         "lighthouse.asc", "--pcf", "lighthouse4_revB.pcf"])
     if result.returncode == 0:
