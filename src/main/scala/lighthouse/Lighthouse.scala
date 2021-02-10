@@ -269,11 +269,20 @@ class LighthouseTopLevel(nSensors: Int = 4,
       fastBlink := !fastBlink
     }
 
+    val ledDimming = RegInit(False)
+    val ledCtr = Reg(UInt(4 bits))
+    val ledDimmingTimer = Timeout(100000 Hz)
+    when(ledDimmingTimer) {
+      ledDimmingTimer.clear()
+      ledCtr := ledCtr + 1
+      ledDimming := ledCtr === 0
+    }
+
     val ledMux = Seq((0, False), (1, slowBlink), (2, fastBlink), (3, True))
 
     io.led0 := !ledControl(0 to 1).muxListDc(ledMux)
     io.led1 := !ledControl(2 to 3).muxListDc(ledMux)
-    io.led2 := !ledControl(4 to 5).muxListDc(ledMux)
+    io.led2 := !(ledControl(4 to 5).muxListDc(ledMux) & ledDimming)
 
     // Reset control
     val resetControl = commandHandler.io.resetCommand.toReg()
@@ -336,7 +345,7 @@ object TopLevelSim {
         dut.clkCtrl.coreClockDomain.waitRisingEdge(8)
       }
 
-      sleep((10*24000000) / 100)
+      sleep((10*24000000) / 10)
 
       simSuccess()
     }
