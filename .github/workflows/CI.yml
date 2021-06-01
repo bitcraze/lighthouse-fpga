@@ -14,4 +14,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Check and build
-      run: docker run --rm -v ${PWD}:/module bitcraze/fpga-builder:3 tools/build/build
+      run: docker run --rm -v ${PWD}:/module bitcraze/fpga-builder:4 tools/build/build

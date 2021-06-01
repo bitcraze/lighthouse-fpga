@@ -2,18 +2,17 @@
 
 import subprocess
 import sys
+import os
 
 
-def pnr(seed: int):
-    result = subprocess.run(["nextpnr-ice40", "--seed",  str(seed),
-                        "--package", "sg48",
-                        "--up5k", "--json", "lighthouse.json", "--asc", 
-                        "lighthouse.asc", "--pcf", "lighthouse4_revB.pcf"])
+def build(seed: int):
+    volume = f"{os.environ['PWD']}:/module"
+    subprocess.run(["docker", "run", "--rm", "-v", volume, "bitcraze/fpga-builder", "make", "clean"])
+    result = subprocess.run(["docker", "run", "--rm", "-v", volume, "bitcraze/fpga-builder:4", "make", f"SEED={seed}"])
     if result.returncode == 0:
         print("Seed is {}".format(seed))
         sys.exit()
 
-
 if __name__ == "__main__":
     for seed in range(1000):
-        pnr(seed)
+        build(seed)

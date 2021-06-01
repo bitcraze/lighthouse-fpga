@@ -12,3 +12,4 @@ LighthouseTopLevel_tb.vcd
 LighthouseTopLevel.v
 verbose.log
 tmp/
+*.bin

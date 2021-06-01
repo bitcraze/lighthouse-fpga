@@ -1,6 +1,7 @@
 PROJ = lighthouse
 
 VERSION ?= 6
+SEED ?= 42
 
 PIN_DEF = lighthouse4_revB.pcf
 DEVICE = up5k
@@ -17,7 +18,7 @@ $(PROJ).json: LighthouseTopLevel.v
 	yosys -p 'read_verilog LighthouseTopLevel.v; read_verilog  blackboxes.v; synth_ice40 -top LighthouseTopLevel; write_json $@'
 
 %.asc: %.json $(PIN_DEF)
-	nextpnr-ice40 --seed 16 --up5k --package sg48 --json $< --asc $@ --pcf $(PIN_DEF) --freq 24
+	nextpnr-ice40 --seed $(SEED) --up5k --package sg48 --json $< --asc $@ --pcf $(PIN_DEF) --freq 24
 	python3 tools/update_bitstream_comment.py $@ "$(VERSION)"
 
 %.bin: %.asc
