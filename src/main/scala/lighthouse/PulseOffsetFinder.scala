@@ -51,6 +51,16 @@ class PulseOffsetFinder(speedMultiplier: Int = 1) extends Component {
     val pulseDelta = io.pulseIn.payload.pulse.timestamp - lastTimestamp
     val lastNPoly = Reg(UInt(6 bits))
 
+    // Slow_clk is timing-critical and the limiting path is the 24-bit pulseDelta
+    // subtraction feeding the testDelta FSM decision. Resolve the delta-derived
+    // decision one cycle ahead in idle - where the input payload is already stable
+    // (the stream holds it until we assert ready in sendResult) - and register it, so
+    // the subtractor terminates at a flop instead of running in series with the FSM
+    // branch. Mirrors the same optimisation in PulseIdentifier.
+    val deltaLargeReg     = RegInit(False)   // (pulseDelta >> 2) > 2048
+    val npolyIdentReg     = RegInit(False)   // npoly identified (=/= 0x3f)
+    val channelChangedReg = RegInit(False)   // npoly =/= lastNPoly
+
     io.pulseOut.payload.pulse := io.pulseIn.payload.pulse
     io.pulseOut.payload.beamWord := io.pulseIn.payload.beamWord
     io.pulseOut.payload.id := io.pulseIn.payload.id
@@ -68,12 +78,21 @@ class PulseOffsetFinder(speedMultiplier: Int = 1) extends Component {
     val fsm = new StateMachine {
         val idle: State = new State with EntryPoint {
             whenIsActive{
-                when(io.pulseIn.valid) { goto(testDelta) }
+                when(io.pulseIn.valid) {
+                    // Latch the pulseDelta-derived decision off the critical path.
+                    deltaLargeReg     := (pulseDelta >> 2) > 2048
+                    npolyIdentReg     := io.pulseIn.payload.npoly =/= 0x3f
+                    channelChangedReg := io.pulseIn.payload.npoly =/= lastNPoly
+                    goto(testDelta)
+                }
             }
         }
         val testDelta = new State {
             whenIsActive {
-                when ((io.pulseIn.payload.npoly =/= 0x3f) && (((pulseDelta >> 2) > 2048) || (io.pulseIn.payload.npoly =/= lastNPoly))) {
+                // An identified pulse starts a new offset search when a long time has
+                // elapsed since the last offset OR the channel changed (same condition
+                // as before, now from registered signals).
+                when (npolyIdentReg && (deltaLargeReg || channelChangedReg)) {
                     offsetFinder.io.start := True
                     goto(waitFinder)
                 }.otherwise {

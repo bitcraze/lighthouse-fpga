@@ -62,6 +62,11 @@ class PulseIdentifier extends Component {
     val nPoly = RegInit(U(0x3f, 6 bits))
     io.pulseOut.npoly := nPoly.resized
 
+    // For the guarded inherit (see testDelta/waitFinder): ask PolyFinder whether the
+    // PREDECESSOR's channel actually reaches this beam. nPoly still holds the
+    // predecessor's channel while we decide.
+    polyFinder.io.queryPoly := nPoly.resized
+
     // Slow_clk is timing-critical (~0.5 ns slack on master) and the limiting
     // path is the 24-bit pulseDelta subtraction feeding the testDelta FSM
     // decision / PolyFinder control. Everything derived from pulseDelta is
@@ -108,6 +113,7 @@ class PulseIdentifier extends Component {
     val twinIdentified    = nPoly =/= 0x3f
     val tooCloseReg       = RegInit(False)
     val twinIdentifiedReg = RegInit(False)
+    val guardModeReg      = RegInit(False)   // PolyFinder run is a guarded-inherit check
 
     io.pulseOut.payload.pulse := io.pulseIn.payload.pulse
     io.pulseOut.payload.beamWord := io.pulseIn.payload.beamWord
@@ -133,14 +139,29 @@ class PulseIdentifier extends Component {
         val testDelta = new State {
             whenIsActive {
                 when (tooCloseReg) {
-                    // Same sweep, too close to identify: skip the degenerate search.
-                    // Inherit the predecessor's channel if it had one, otherwise emit
-                    // a clean 0x3f for the firmware to back-fill.
                     when (!twinIdentifiedReg) {
+                        // Leading close pair: predecessor unidentified -> clean 0x3f
+                        // for the firmware to back-fill.
                         nPoly := 0x3f
+                        goto(sendResult)
+                    }.otherwise {
+                        // GUARDED INHERIT. The predecessor was identified, but "within
+                        // 64 ticks" alone does NOT prove same sweep: with multiple base
+                        // stations a different station's near-coincident hit also lands
+                        // close. Blindly inheriting then stamps that foreign pulse with
+                        // the predecessor's channel - a confident MISLABEL the firmware
+                        // accepts (4 distinct sensors, one channel) when the two stations
+                        // sweep the sensors in opposite order, corrupting that sensor's
+                        // angle. So verify the beam is actually reachable from the
+                        // predecessor's beam UNDER THE PREDECESSOR'S poly (PolyFinder
+                        // queryHit); inherit only then, else emit 0x3f. A genuine
+                        // same-sweep twin IS reachable (issue #14), a foreign hit is not.
+                        guardModeReg := True
+                        polyFinder.io.start.valid := True
+                        goto(waitFinder)
                     }
-                    goto(sendResult)
                 }.elsewhen (deltaSmallReg) {
+                    guardModeReg := False
                     polyFinder.io.start.valid := True
                     goto(waitFinder)
                 }.otherwise {
@@ -155,10 +176,19 @@ class PulseIdentifier extends Component {
             }
             whenIsActive {
                 when(polyFinder.io.done.fire) {
-                    when(polyFinder.io.found) {
-                        nPoly := polyFinder.io.polyFound.resized
+                    when (guardModeReg) {
+                        // Inherit the predecessor's channel only if its own poly reaches
+                        // this beam; a different station's beam does not -> 0x3f. nPoly
+                        // already holds the predecessor channel, so keep it on a hit.
+                        when (!polyFinder.io.queryHit) {
+                            nPoly := 0x3f
+                        }
                     }.otherwise {
-                        nPoly := 0x3f
+                        when(polyFinder.io.found) {
+                            nPoly := polyFinder.io.polyFound.resized
+                        }.otherwise {
+                            nPoly := 0x3f
+                        }
                     }
                     goto(sendResult)
                 }
@@ -243,6 +273,30 @@ object PulseIdentifierSim {
     (3, 9761651, 9028), (2, 9762118, 107634), (3, 10105766, 64014), (1, 10106241, 111953),
     (2, 10106230, 46762), (0, 10106716, 78759), (1, 10240667, 87749), (3, 10241144, 9028),
     (0, 10241151, 36113), (2, 10241611, 107634), (3, 10585259, 64014), (1, 10585733, 111953)
+  )
+
+  // ---------------------------------------------------------------------------
+  // Real capture from TWO OPPOSED LH2 base stations (channels 0 and 2). When the two
+  // stations' sweeps cross in time, a sensor hit from one station lands <64 ticks after
+  // an identified hit from the OTHER station. The blind tooClose-inherit (the first
+  // issue-#14 fix) stamped that foreign pulse with the neighbour's channel - a confident
+  // CROSS-STATION mislabel. Because opposed stations sweep the sensors in opposite order,
+  // the foreign pulse completes a block of 4 DISTINCT sensors, so the firmware accepts it
+  // as a single-channel block and that sensor's angle is corrupted (a block the previous,
+  // unguarded code would have accepted; the prior, single-base-station capture never
+  // exposed this). The guard - verify the beam is reachable from the predecessor's beam
+  // UNDER THE PREDECESSOR'S poly before inheriting - must report the foreign pulse 0x3f.
+  //
+  // Each entry: (rows in arrival order, index of the foreign pulse). The foreign beam was
+  // verified phase-consistent with the OTHER base station, not the assigned channel. These
+  // blocks reproduce standalone: the genuine pulses identify via the in-block relative
+  // chain, and the foreign pulse trails an identified neighbour. See issue #14 follow-up.
+  // ---------------------------------------------------------------------------
+  val crossStationTypeA: Seq[(Seq[(Int, Long, Int)], Int)] = Seq(
+    (Seq((2,  7849275,  80450), (3,  7849609, 125756), (0,  7849826,  45197), (1,  7849876,  61838)), 3),
+    (Seq((1, 14311457,  51649), (0, 14311787, 107677), (3, 14311949,  50020), (2, 14311985,  90371)), 3),
+    (Seq((2, 11833223, 110721), (3, 11833558,  78838), (0, 11833774, 122966), (1, 11833824,  91360)), 3),
+    (Seq((1, 14322511, 123676), (0, 14322841, 107106), (3, 14323003, 109202), (2, 14323024, 120896)), 3)
   )
 
   def main(args: Array[String]): Unit = {
@@ -421,6 +475,34 @@ object PulseIdentifierSim {
         println(f"  ${capBlocks.count(_.length==4)} full blocks; buggy model glitches $buggyBad of them, fixed model 0")
         if (buggyBad == 0) {
             failures += "Regression 3 did not reproduce the residual under the buggy model - capture/test is not exercising it"
+        }
+
+        // =====================================================================
+        // Regression 4: cross-station near-coincident hits (two OPPOSED base
+        // stations). The foreign pulse (from the other station, <64 ticks after an
+        // identified neighbour) must be reported 0x3f, NOT inherit the neighbour's
+        // channel. Without the guard it inherits -> the block looks like one channel
+        // over 4 distinct sensors and the firmware accepts a corrupted angle. This
+        // pins the guard: it is the only regression here that fails if the guard is
+        // removed (the others are single-base-station). Real hardware capture.
+        // =====================================================================
+        println("Regression 4: cross-station coincidence (opposed base stations)")
+        crossStationTypeA.zipWithIndex.foreach { case ((rows, foreignIdx), bi) =>
+            val nps     = rows.map { case (s, t, b) => pushPulse(t, 0xB0, b) }
+            val foreign = nps(foreignIdx)
+            val genuine = nps.zipWithIndex.collect { case (np, i) if i != foreignIdx && np != UNIDENTIFIED => np }
+            val shown   = rows.zip(nps).map { case ((s, _, _), np) => f"s$s=0x${np.toHexString}" }.mkString(" ")
+            println(s"  block $bi: $shown  (foreign s${rows(foreignIdx)._1})")
+            // The foreign pulse must NOT inherit a channel (guard => 0x3f).
+            if (foreign != UNIDENTIFIED) {
+                failures += f"cross-station block $bi: foreign pulse (s${rows(foreignIdx)._1}) reported 0x${foreign.toHexString}, " +
+                            "expected 0x3f - it inherited a different base station's channel (guard regressed)"
+            }
+            // Sanity: the genuine pulses must still identify and agree, so this is a real
+            // mislabel scenario (not just the whole block going unidentified).
+            if (genuine.isEmpty || genuine.distinct.size != 1) {
+                failures += s"cross-station block $bi: genuine pulses did not identify to one channel (got ${genuine.distinct.map("0x"+_.toHexString)})"
+            }
         }
 
         dut.clockDomain.waitRisingEdge(50)
