@@ -97,7 +97,17 @@ class PulseOffsetFinder(speedMultiplier: Int = 1) extends Component {
                 when(offsetFinder.io.found) {
                     lastTimestamp := io.pulseIn.payload.pulse.timestamp
                 }
-                lastNPoly := io.pulseIn.payload.npoly.resized
+                // Only remember the channel of an IDENTIFIED pulse. An unidentified
+                // (0x3f) pulse carries no channel, so it must not overwrite lastNPoly -
+                // otherwise the next same-channel pulse looks like a channel change and
+                // emits a spurious second sync offset. This happens whenever a sweep's
+                // two near-simultaneous sensors arrive out of timestamp order: the later-
+                // arriving but earlier-timestamped one gets a (huge, wrapped) pulseDelta,
+                // is reported 0x3f, and lands between the two identified pulses. See the
+                // PulseIdentifier comments and issue #14.
+                when (io.pulseIn.payload.npoly =/= 0x3f) {
+                    lastNPoly := io.pulseIn.payload.npoly.resized
+                }
                 io.pulseOut.valid := True
                 when(io.pulseOut.fire) {
                     io.pulseIn.ready := True
@@ -127,60 +137,65 @@ object PulseObjectFinderSim {
         dut.clockDomain.forkStimulus(10)
 
         val timeout = fork {
-            dut.clockDomain.waitRisingEdge(1000000)
+            dut.clockDomain.waitRisingEdge(2000000)
             simFailure("Timeout, something got stuck!")
         }
 
         dut.io.pulseIn.valid #= false
-        dut.io.pulseOut.ready #= false
+        dut.io.pulseOut.ready #= true
         dut.clockDomain.waitRisingEdge(10)
 
-        dut.io.pulseIn.payload.pulse.timestamp #= 0x0C552F
-        dut.io.pulseIn.payload.pulse.width #= 0xB3
-        dut.io.pulseIn.payload.beamWord #= 0x1fe72
-        dut.io.pulseIn.payload.npoly #= 0x3f
-        dut.io.pulseIn.valid #= true
-        dut.clockDomain.waitRisingEdge(1)
-
-        while (!dut.io.pulseOut.valid.toBoolean) {
-            dut.clockDomain.waitRisingEdge(1)
+        // Drive one identified pulse and return the sync offset reported for it.
+        // (The OffsetFinder search can take tens of thousands of cycles.)
+        def pushPulse(npoly: Int, beamWord: Int, timestamp: Long, width: Int): Long = {
+            dut.io.pulseIn.payload.pulse.timestamp #= timestamp
+            dut.io.pulseIn.payload.pulse.width #= width
+            dut.io.pulseIn.payload.beamWord #= beamWord
+            dut.io.pulseIn.payload.npoly #= npoly
+            dut.io.pulseIn.payload.id #= 0
+            dut.io.pulseIn.valid #= true
+            var guard = 0
+            while (!dut.io.pulseOut.valid.toBoolean) {
+                dut.clockDomain.waitRisingEdge()
+                guard += 1
+                if (guard > 200000) simFailure("PulseOffsetFinder stalled waiting for output")
+            }
+            val offset = dut.io.pulseOut.payload.offset.toLong
+            dut.clockDomain.waitRisingEdge() // output fires (ready held high)
+            dut.io.pulseIn.valid #= false
+            dut.clockDomain.waitRisingEdge(3)
+            offset
         }
 
-        dut.io.pulseOut.ready #= true
-        dut.clockDomain.waitRisingEdge(1)
-        dut.io.pulseOut.ready #= false
-        dut.io.pulseIn.valid #= false
-        dut.clockDomain.waitRisingEdge(1)
+        // Regression for the out-of-order residual (issue #14): within one sweep an
+        // unidentified (0x3f) pulse can land between two identified same-channel pulses
+        // (because the sweep's two near-simultaneous sensors arrive out of timestamp
+        // order). The 0x3f pulse must NOT reset the channel tracking, otherwise the
+        // second identified pulse looks like a channel change and emits a SECOND sync
+        // offset - and the firmware discards any block with more than one offset.
+        val channel = 12
+        val base    = 0x100000L
 
+        // p1: first identified pulse of the sweep -> emits the one legitimate offset.
+        val o1 = pushPulse(channel, 0x0bd25, base,      0xAD)
+        // p2: the out-of-order twin, reported unidentified (0x3f). Must not emit and
+        //     must not reset the channel. Timestamp is slightly earlier (out of order).
+        val o2 = pushPulse(0x3f,    0x00000, base - 7,  0x00)
+        // p3: another identified pulse of the SAME sweep/channel, small positive gap.
+        //     Must NOT emit a second offset.
+        val o3 = pushPulse(channel, 0x05e2e, base + 50, 0xB5)
 
-        dut.io.pulseIn.payload.pulse.timestamp #= 0x0C5808
-        dut.io.pulseIn.payload.pulse.width #= 0xAD
-        dut.io.pulseIn.payload.beamWord #= 0x0bd25
-        dut.io.pulseIn.payload.npoly #= 12
-        dut.io.pulseIn.valid #= true
-        dut.clockDomain.waitRisingEdge(1)
+        println(f"offsets: p1=0x${o1.toHexString} p2=0x${o2.toHexString} p3=0x${o3.toHexString}")
 
-        dut.clockDomain.waitRisingEdge(78000)
+        val failures = scala.collection.mutable.ArrayBuffer[String]()
+        if (o1 == 0)  failures += "p1 (first identified pulse) should have produced a sync offset"
+        if (o2 != 0)  failures += s"p2 (0x3f) must not produce an offset, got 0x${o2.toHexString}"
+        if (o3 != 0)  failures += s"p3 emitted a SECOND offset (0x${o3.toHexString}); a 0x3f pulse reset the channel tracking (issue #14 out-of-order residual)"
 
-        dut.io.pulseOut.ready #= true
-        dut.clockDomain.waitRisingEdge(1)
-        // dut.io.pulseOut.ready #= false
-
-        dut.io.pulseIn.payload.pulse.timestamp #= 0x0C5839
-        dut.io.pulseIn.payload.pulse.width #= 0xB5
-        dut.io.pulseIn.payload.beamWord #= 0x05e2e
-        dut.io.pulseIn.payload.npoly #= 12
-        dut.io.pulseIn.valid #= true
-        dut.clockDomain.waitRisingEdge(10)
-        dut.io.pulseOut.ready #= true
-        dut.clockDomain.waitRisingEdge(1)
-        dut.io.pulseOut.ready #= false
-        // dut.clockDomain.waitRisingEdge(1)
-        dut.io.pulseIn.valid #= false
-        dut.clockDomain.waitRisingEdge(10)
-
-        dut.clockDomain.waitRisingEdge(100)
-
+        dut.clockDomain.waitRisingEdge(50)
+        if (failures.nonEmpty) {
+            simFailure("PulseOffsetFinder offset-count check failed:\n  - " + failures.mkString("\n  - "))
+        }
         simSuccess()
     }
   }

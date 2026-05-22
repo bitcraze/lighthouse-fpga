@@ -126,11 +126,96 @@ Two make target exists to help development: ```make generate_verilog```
 generates verilog from scala, ```make bitstream``` only builds the bitstream from
 the verilog (useful if the generation was launched from an IDE).
 
+### Building with Docker
+
+If you do not want to install the toolchain locally, you can build with the same
+`bitcraze/fpga-builder` image that the CI uses. It bundles SBT, Yosys, nextpnr
+and IceStorm. From the repository root:
+
+```
+docker run --rm -v $(pwd):/module bitcraze/fpga-builder ./tools/build/build
+```
+
+This mounts the working copy at `/module` and runs `tools/build/build` (which
+just calls `make`), producing `lighthouse.bin` in the repository root. The build
+artifacts are owned by the container user; if you hit permission issues, append
+`--user $(id -u):$(id -g)` to the `docker run` command.
+
+> Timing closure is seed-sensitive. If the build fails timing, bump `SEED` in
+> the `Makefile` (or run `tools/search_seed.py`) until both clock domains pass.
+
 If you have your deck connected to a serial port (be careful to use a 3.0V serial port, 3.3V will damage the deck!),
 you can use the [integrated bootloader](https://github.com/bitcraze/lighthouse-bootloader) to program the deck:
 ```
-<paht-to-lighthouse-bootloader>/scripts/uart_bootloader.py /dev/ttyUSB0 lighthouse.bin
+<path-to-lighthouse-bootloader>/scripts/uart_bootloader.py /dev/ttyUSB0 lighthouse.bin
 ```
+
+### Flashing over the air through the Crazyflie (cfcli)
+
+When the deck is mounted on a Crazyflie you can flash the bitstream wirelessly
+through the Crazyflie, without a serial adapter. The Crazyflie firmware exposes
+the deck's SPI flash as a deck-firmware update target named
+`deck-bcLighthouse4-fw`, so the standard Crazyflie command-line flasher can write
+`lighthouse.bin` to it:
+
+```
+cfcli bootload flash --bin lighthouse.bin
+```
+
+(The same can be done from the cfclient GUI Bootloader tab, or with
+`python3 -m cfloader flash lighthouse.bin deck-bcLighthouse4-fw -w <uri>`.)
+
+> **Custom bitstreams need developer-flash mode.** Normally the Crazyflie
+> firmware only accepts the exact bitstream it was built against (it checks the
+> size and a compiled-in CRC, `LIGHTHOUSE_BITSTREAM_CRC`) and reboots the deck by
+> power-cycling. To iterate on your own bitstream over the air, build the
+> Crazyflie firmware with `CONFIG_DECK_LIGHTHOUSE_DEV_FLASH=y`. This advertises
+> on-demand bootloader entry (no power cycle) and bypasses the boot-time CRC
+> check so any flashed bitstream boots. It boots unverified bitstreams and must
+> not be enabled in production firmware.
+
+## Simulation
+
+The Scala sources contain SpinalHDL simulations (the `*Sim` objects, e.g.
+`PulseIdentifierSim`, `PulseObjectFinderSim`, `PolyFinderSim`, `TopLevelSim`) that
+exercise the design under [Verilator](https://www.veripool.org/verilator/). This is the
+"software-in-the-loop" path: you can reproduce decoding behaviour and verify a
+change against captured data offline, before building a bitstream or touching
+hardware.
+
+The `fpga-builder` image ships SBT but **not** Verilator (which SpinalHDL's
+`doSim` needs), so `tools/run_sim.sh` derives a local image with Verilator added
+(once) and runs a simulation in it:
+
+```
+tools/run_sim.sh lighthouse.PulseIdentifierSim
+```
+
+A run prints the simulation's own output and ends in `Simulation done` (success)
+or a `SimFailure` (a failed assertion). Waveforms are written to
+`simWorkspace/<DUT>/test.vcd`.
+
+> If a run fails to compile with `Specified --top-module ... was not found`,
+> delete a stale workspace left by an interrupted run: `rm -rf simWorkspace`
+> (it may be owned by `root` if a previous run was containerised, so `sudo`
+> may be needed). It is regenerated on the next run.
+
+### PulseIdentifierSim — channel-identification regression
+
+`PulseIdentifierSim` replays the captured pulse stream from
+[issue #14](https://github.com/bitcraze/lighthouse-fpga/issues/14) through
+`PulseIdentifier` and checks, per sweep block, that all identified sensors agree
+on one channel and that exactly one sync offset is produced — the conditions the
+Crazyflie firmware (`pulse_processor_v2.c`) requires to accept a block. It is the
+regression for near-simultaneous multi-sensor hits: when two sensors of one sweep
+are hit within a few ticks the LFSR has barely advanced, so the relative
+polynomial search is ambiguous and must not be trusted (see the comments in
+`PulseIdentifier.scala`).
+
+> **Timing closure is non-deterministic** with the nextpnr in `fpga-builder`:
+> the same `SEED` can pass or fail timing across runs, so a closing build is not
+> guaranteed by the seed alone. Re-run `make` until both clock domains pass
+> (`tools/search_seed.py` also helps, but expect variance).
 
 ## Tools
 

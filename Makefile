@@ -1,7 +1,7 @@
 PROJ = lighthouse
 
 VERSION ?= 6
-SEED ?= 42
+SEED ?= 14
 
 PIN_DEF = lighthouse4_revB.pcf
 DEVICE = up5k

@@ -13,3 +13,4 @@ LighthouseTopLevel.v
 verbose.log
 tmp/
 *.bin
+.scratch/
