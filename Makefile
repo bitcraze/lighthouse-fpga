@@ -23,6 +23,7 @@ $(PROJ).json: LighthouseTopLevel.v
 
 %.bin: %.asc
 	icepack $< $@
+	python3 tools/bitstream_id.py $@
 
 %_tb: %_tb.v %.v
 	iverilog -g2005-sv -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v`
