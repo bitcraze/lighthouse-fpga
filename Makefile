@@ -1,6 +1,6 @@
 PROJ = lighthouse
 
-VERSION ?= 6
+VERSION ?= 7
 SEED ?= 14
 
 PIN_DEF = lighthouse4_revB.pcf
