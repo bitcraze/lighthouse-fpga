@@ -22,6 +22,26 @@ set -u
 VERSION="${VERSION:-$(sed -nE 's/^VERSION[[:space:]]*\??=[[:space:]]*([^[:space:]#]+).*/\1/p' Makefile | head -1)}"
 : "${VERSION:?could not determine VERSION from Makefile}"
 
+# Retrying PnR on the EXISTING netlist is the point of this script - resynthesis is
+# slow and unnecessary. But packing a stale netlist would print firmware constants
+# for a bitstream that does not contain the current RTL, so refuse instead.
+stale=""
+if [ ! -f lighthouse.json ]; then
+  stale="lighthouse.json is missing"
+elif [ ! -f LighthouseTopLevel.v ]; then
+  stale="LighthouseTopLevel.v is missing"
+elif [ LighthouseTopLevel.v -nt lighthouse.json ]; then
+  stale="LighthouseTopLevel.v is newer than lighthouse.json (yosys not re-run)"
+else
+  newer=$(find src -name '*.scala' -newer LighthouseTopLevel.v -print -quit 2>/dev/null)
+  [ -n "$newer" ] && stale="$newer is newer than LighthouseTopLevel.v (sbt not re-run)"
+fi
+if [ -n "$stale" ]; then
+  echo "refusing to run: $stale" >&2
+  echo "  regenerate first:  make generate_verilog && make lighthouse.json" >&2
+  exit 1
+fi
+
 max="${MAX:-60}"
 pinned="${SEED:-}"
 
