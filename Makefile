@@ -44,4 +44,9 @@ clean:
 	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin $(PROJ)_timing.v *.vcd
 
 .SECONDARY:
+# nextpnr writes the .asc before it runs timing analysis, so a run that misses
+# --freq leaves a complete-looking .asc behind. Without this, the next make sees
+# it as newer than the .json, skips PnR and packs a bitstream from a placement
+# that FAILED timing.
+.DELETE_ON_ERROR:
 .PHONY: all prog clean generate_verilog bitstream
