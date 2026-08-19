@@ -25,6 +25,13 @@ VERSION="${VERSION:-$(sed -nE 's/^VERSION[[:space:]]*\??=[[:space:]]*([^[:space:
 max="${MAX:-60}"
 pinned="${SEED:-}"
 
+# nextpnr writes the .asc BEFORE it runs timing analysis, so a miss still
+# leaves a complete-looking file. make would then see it as newer than the
+# .json, skip PnR and pack a placement that failed timing - and the
+# Makefile's .DELETE_ON_ERROR cannot help, since make did not produce it.
+closed=0
+trap '[ "$closed" = 0 ] && rm -f lighthouse.asc; exit 130' INT TERM
+
 # Post-route Fmax per clock, with margin against the target nextpnr enforced.
 timing_report() {
   echo "$1" | grep "Max frequency for clock" | tail -2 |
@@ -40,6 +47,7 @@ for i in $(seq 1 "$max"); do
           --asc lighthouse.asc --pcf lighthouse4_revB.pcf --freq 24 2>&1)
   rc=$?
   if [ $rc -eq 0 ]; then
+    closed=1
     echo "attempt $i: CLOSED with SEED=$seed"
     timing_report "$out"
     # Past this point every step must succeed for the build to be usable, so
@@ -57,6 +65,7 @@ for i in $(seq 1 "$max"); do
   fi
   echo "attempt $i: miss (SEED=$seed)"
   timing_report "$out"
+  rm -f lighthouse.asc
 done
 echo "no closing placement in $max attempts"
 exit 1
