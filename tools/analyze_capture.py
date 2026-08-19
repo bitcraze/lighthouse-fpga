@@ -47,7 +47,11 @@ def main(path):
     if cur:
         blocks.append(cur)
 
-    full = [bl for bl in blocks if len(bl) == 4]
+    # Four rows is not enough: the firmware validates a sensor MASK, so a block
+    # with a duplicated sensor and another missing is rejected there and must not
+    # count here either.
+    full = [bl for bl in blocks
+            if len(bl) == 4 and len({pulses[i][0] for i in bl}) == 4]
     print(f"{len(blocks)} blocks, {len(full)} with exactly 4 sensors")
 
     # A glitch block = more than one sensor carries a sync offset (firmware wants 1).
