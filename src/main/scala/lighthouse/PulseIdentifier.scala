@@ -42,6 +42,14 @@ case class IdentPulseWithData() extends Bundle {
     val id = Bits(2 bits)
 }
 
+object PulseIdentifier {
+    // A pulse arriving within this many ticks of its predecessor is treated as the
+    // same sweep crossing a second sensor (~16 LFSR steps), where the relative
+    // PolyFinder search is degenerate. Shared with PulseIdentifierSim so the RTL
+    // threshold and the regression asserting it cannot drift apart.
+    val sameSweepMaxDelta = 64
+}
+
 class PulseIdentifier extends Component {
     val io = new Bundle {
         val pulseIn = slave Stream(PulseWithData())
@@ -108,8 +116,7 @@ class PulseIdentifier extends Component {
     // pulseDelta wraps hugely negative, falls through to 0x3f, and lands between two
     // identified pulses - the complementary half of the fix lives in PulseOffsetFinder
     // (a 0x3f must not reset the channel). See issue #14.
-    val sameSweepMaxDelta = 64                                  // ticks (~16 LFSR steps)
-    val tooClose          = pulseDelta < sameSweepMaxDelta
+    val tooClose          = pulseDelta < PulseIdentifier.sameSweepMaxDelta
     val twinIdentified    = nPoly =/= 0x3f
     val tooCloseReg       = RegInit(False)
     val twinIdentifiedReg = RegInit(False)
@@ -415,6 +422,33 @@ object PulseIdentifierSim {
             failures += "no pulse in the capture was identified at all"
         } else if (identifiedNpolys.distinct.size > 2) {
             failures += s"more than two channels identified for one base station: ${identifiedNpolys.distinct.sorted.map("0x"+_.toHexString)} (garbage channel?)"
+        }
+
+        // The guarded inherit IS the issue #14 fix, so assert it positively: a genuine
+        // same-sweep twin must carry the predecessor's channel. Every check above stays
+        // green if the guard never inherits - the twin just falls to 0x3f, and one
+        // channel / one offset per block still holds - so a mis-wired queryPoly, an
+        // inverted queryHit or an over-tight maxTick would ship unnoticed.
+        var inherited = 0
+        for (i <- 1 until results.length) {
+            val (ps, pt, pnp) = results(i - 1)
+            val (cs, ct, cnp) = results(i)
+            // pulseDelta is a 24-bit UNSIGNED subtraction in the RTL, so mirror it
+            // exactly: an out-of-order pulse wraps huge and is not a twin, but a
+            // counter wrap inside a genuine pair still is.
+            val delta = (ct - pt) & 0xFFFFFFL
+            if (delta < PulseIdentifier.sameSweepMaxDelta && pnp != UNIDENTIFIED) {
+                inherited += 1
+                if (cnp != pnp) {
+                    failures += s"s$cs t:$ct is $delta ticks after s$ps (same sweep) but reports " +
+                                s"0x${cnp.toHexString} instead of the predecessor's 0x${pnp.toHexString}"
+                }
+            }
+        }
+        if (inherited == 0) {
+            failures += "no same-sweep twin was inherited - the guarded inherit path is not exercised"
+        } else {
+            println(s"  guarded inherit exercised on $inherited same-sweep twin(s)")
         }
 
         // =====================================================================
