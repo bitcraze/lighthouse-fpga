@@ -23,7 +23,9 @@ $(PROJ).json: LighthouseTopLevel.v
 
 %.bin: %.asc
 	icepack $< $@
-	python3 tools/bitstream_id.py $@
+# Informational only - the '-' keeps a failure here from taking the bitstream
+# down with it under .DELETE_ON_ERROR.
+	-python3 tools/bitstream_id.py $@
 
 %_tb: %_tb.v %.v
 	iverilog -g2005-sv -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v`
