@@ -1,7 +1,7 @@
 PROJ = lighthouse
 
-VERSION ?= 6
-SEED ?= 42
+VERSION ?= 7
+SEED ?= 14
 
 PIN_DEF = lighthouse4_revB.pcf
 DEVICE = up5k
@@ -23,6 +23,9 @@ $(PROJ).json: LighthouseTopLevel.v
 
 %.bin: %.asc
 	icepack $< $@
+# Informational only - the '-' keeps a failure here from taking the bitstream
+# down with it under .DELETE_ON_ERROR.
+	-python3 tools/bitstream_id.py $@
 
 %_tb: %_tb.v %.v
 	iverilog -g2005-sv -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v`
@@ -43,4 +46,9 @@ clean:
 	rm -f $(PROJ).json $(PROJ).asc $(PROJ).rpt $(PROJ).bin $(PROJ)_timing.v *.vcd
 
 .SECONDARY:
+# nextpnr writes the .asc before it runs timing analysis, so a run that misses
+# --freq leaves a complete-looking .asc behind. Without this, the next make sees
+# it as newer than the .json, skips PnR and packs a bitstream from a placement
+# that FAILED timing.
+.DELETE_ON_ERROR:
 .PHONY: all prog clean generate_verilog bitstream

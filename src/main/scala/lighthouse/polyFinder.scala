@@ -42,6 +42,11 @@ class PolyFinder extends Component {
 
         val found = out Bool
         val polyFound = out UInt(5 bits)
+        // Query: did a SPECIFIC polynomial reach the target? Lets a caller verify a
+        // single candidate poly (e.g. the predecessor's channel for a near-simultaneous
+        // hit) rather than trusting OHToUInt of a multi-hot result. See PulseIdentifier.
+        val queryPoly = in UInt(5 bits)
+        val queryHit = out Bool
         val done = master Event
     }
 
@@ -49,6 +54,7 @@ class PolyFinder extends Component {
     val found = RegInit(B(0, constants.Polys.length bits))
 
     io.polyFound := OHToUInt(found)
+    io.queryHit := found(io.queryPoly)
     io.done.valid := searching.fall()
     io.found := found.orR
     io.start.ready := True
@@ -106,6 +112,7 @@ object PolyFinderSim {
       dut.io.startState #= 0x1fe72
       dut.io.targetState #= 0x0bd25
       dut.io.maxTick #= 183
+      dut.io.queryPoly #= 0
       dut.io.start.valid #= false
 
       dut.clockDomain.waitRisingEdge()
