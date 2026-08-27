@@ -13,6 +13,6 @@ on:
 
 jobs:
   build:
-    uses: bitcraze/workflows/.github/workflows/basic_build.yml@b59a297ee5a6105780d4ac832100f8990f243d04
+    uses: bitcraze/workflows/.github/workflows/basic_build.yml@2284e0bfa7ceefcf85bc28eff99b19cd0a7ff0d7
     with:
       builder_image: 'bitcraze/fpga-builder'
