@@ -10,7 +10,12 @@ PACKAGE = sg48
 all: generate_verilog bitstream
 
 generate_verilog:
-	sbt "runMain lighthouse.GenerateTopLevel"
+	for i in 1 2 3; do \
+		sbt "runMain lighthouse.GenerateTopLevel" && exit 0; \
+		echo "generate_verilog attempt $$i/3 failed, retrying..." >&2; \
+		[ $$i -lt 3 ] && sleep 10; \
+	done; \
+	exit 1
 
 bitstream: $(PROJ).bin
 
